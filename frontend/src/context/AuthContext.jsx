@@ -1,4 +1,8 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
+// ── Única adição: helpers de UI ──────────────────────────────────────────────
+import { toastError, confirmDialog } from '../lib/ui';
+// ────────────────────────────────────────────────────────────────────────────
 
 // Criando o Contexto Global
 export const AuthContext = createContext();
@@ -31,7 +35,7 @@ export const AuthProvider = ({ children }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, senha })
             });
-            
+
             const dados = await resposta.json();
 
             if (dados.sucesso) {
@@ -48,13 +52,21 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        if (window.confirm("Deseja sair da sua conta?")) {
+    // ── window.confirm → confirmDialog (async) ───────────────────────────────
+    const logout = async () => {
+        const ok = await confirmDialog({
+            title: 'Encerrar sessão',
+            message: 'Deseja sair da sua conta?',
+            confirmLabel: 'Sair',
+            cancelLabel: 'Continuar'
+        });
+        if (ok) {
             setUser(null);
             localStorage.removeItem('usuarioLogado');
             window.location.href = '/';
         }
     };
+    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // CONTROLE DOS MODAIS (Antigo main.js)

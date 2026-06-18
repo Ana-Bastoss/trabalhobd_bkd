@@ -1,6 +1,11 @@
+// src/main.jsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+
+// ── Importa o CSS do sistema de toasts/confirm ───────────────────────────────
+import './components/ui.css'
+// ────────────────────────────────────────────────────────────────────────────
 
 // Ponto de entrada do React.
 // Tudo que estava no main.js antigo (modais, eventos, filtros) foi migrado

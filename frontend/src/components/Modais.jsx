@@ -1,6 +1,9 @@
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import '../assets/style.css'; // Mantém o estilo original
+// ── Única adição: toasts de feedback ─────────────────────────────────────────
+import { toastSuccess, toastError } from '../lib/ui';
+// ────────────────────────────────────────────────────────────────────────────
 
 const Modais = () => {
     // 1. Puxa as variáveis de inteligência do Contexto
@@ -14,8 +17,12 @@ const Modais = () => {
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         const resultado = await login(email, senha);
-        if (!resultado.sucesso) {
-            alert(resultado.mensagem);
+        if (resultado.sucesso) {
+            // ── toast de boas-vindas ──────────────────────────────────────────
+            toastSuccess(`Bem-vindo(a), ${resultado.usuario.nome.split(' ')[0]}!`);
+        } else {
+            // ── alert → toastError ────────────────────────────────────────────
+            toastError(resultado.mensagem);
         }
     };
 

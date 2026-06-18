@@ -1,3 +1,4 @@
+// src/lib/ui.js
 // Pub-sub singleton para toasts e confirm dialogs.
 // Permite chamar toast()/confirmDialog() de qualquer lugar sem precisar de context.
 
