@@ -34,6 +34,19 @@ const ParceiroDashboard = () => {
     // NOVO: Estado para abrir o Modal do Stripe
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
+    // NOVO: Participantes reais (carregados quando um evento é selecionado)
+    const [participantesGlobais, setParticipantesGlobais] = useState([]);
+    const [eventoParticipantesSelecionado, setEventoParticipantesSelecionado] = useState('');
+    const [loadingParticipantes, setLoadingParticipantes] = useState(false);
+    const [buscaParticipante, setBuscaParticipante] = useState('');
+
+    // NOVO: Formulário de participante manual real
+    const [formParticipante, setFormParticipante] = useState({ nome: '', email: '', cpf: '' });
+
+    // NOVO: Ticket de suporte real
+    const [mensagemAjuda, setMensagemAjuda] = useState('');
+    const [enviandoTicket, setEnviandoTicket] = useState(false);
+
     // ==========================================
     // ESTADOS DO FORMULÁRIO DE EVENTOS
     // ==========================================
@@ -56,6 +69,12 @@ const ParceiroDashboard = () => {
         }
     }, []);
 
+    // NOVO: recarrega participantes sempre que o evento selecionado no filtro muda
+    useEffect(() => {
+        carregarParticipantes(eventoParticipantesSelecionado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eventoParticipantesSelecionado]);
+
     const carregarEventos = async () => {
         try {
             const resposta = await fetch('/api/eventos');
@@ -66,6 +85,20 @@ const ParceiroDashboard = () => {
         } catch (erro) {
             console.error("Erro ao carregar tabelas:", erro);
         }
+    };
+
+    // NOVO: Carrega participantes reais inscritos em um evento específico
+    const carregarParticipantes = async (idEvento) => {
+        if (!idEvento) { setParticipantesGlobais([]); return; }
+        setLoadingParticipantes(true);
+        try {
+            const resposta = await fetch(`/api/inscricoes/evento/${idEvento}`);
+            const dados = await resposta.json();
+            if (dados.sucesso) setParticipantesGlobais(dados.inscritos);
+        } catch (erro) {
+            console.error('Erro ao carregar participantes:', erro);
+        }
+        setLoadingParticipantes(false);
     };
 
     // ==========================================
@@ -167,6 +200,75 @@ const ParceiroDashboard = () => {
     // ==========================================
     // FUNÇÕES AUXILIARES
     // ==========================================
+    // ==========================================
+    // NOVO: ADICIONAR PARTICIPANTE MANUAL (real, via API)
+    // ==========================================
+    const adicionarParticipanteManual = async () => {
+        if (!eventoParticipantesSelecionado) {
+            toastError('Selecione o evento de destino no filtro da aba Participantes antes de adicionar.');
+            return;
+        }
+        if (!formParticipante.nome || !formParticipante.email) {
+            toastError('Nome e e-mail são obrigatórios.');
+            return;
+        }
+        try {
+            const resposta = await fetch('/api/inscricoes/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_evento: eventoParticipantesSelecionado,
+                    nome: formParticipante.nome,
+                    email: formParticipante.email,
+                    cpf: formParticipante.cpf
+                })
+            });
+            const dados = await resposta.json();
+            if (dados.sucesso) {
+                toastSuccess('Participante cadastrado com sucesso!');
+                setFormParticipante({ nome: '', email: '', cpf: '' });
+                closeModals();
+                carregarParticipantes(eventoParticipantesSelecionado);
+            } else {
+                toastError(dados.mensagem);
+            }
+        } catch (erro) {
+            toastError('Erro ao conectar com o servidor.');
+        }
+    };
+
+    // ==========================================
+    // NOVO: ENVIAR TICKET DE SUPORTE (real, via API)
+    // ==========================================
+    const enviarTicketAjuda = async () => {
+        if (!mensagemAjuda.trim()) { toastError('Descreva o problema antes de enviar.'); return; }
+        setEnviandoTicket(true);
+        try {
+            const resposta = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_usuario: user.id,
+                    nome_remetente: user.nome,
+                    tipo_remetente: user.tipo,
+                    assunto: 'Solicitação de ajuda — Participante',
+                    mensagem: mensagemAjuda
+                })
+            });
+            const dados = await resposta.json();
+            if (dados.sucesso) {
+                toastSuccess('Requisição enviada!');
+                setMensagemAjuda('');
+                closeModals();
+            } else {
+                toastError(dados.mensagem);
+            }
+        } catch (erro) {
+            toastError('Erro ao conectar com o servidor.');
+        }
+        setEnviandoTicket(false);
+    };
+
     const handleLogout = async () => {
         const ok = await confirmDialog({
             title: 'Encerrar sessão',
@@ -419,10 +521,19 @@ const ParceiroDashboard = () => {
                             </div>
 
                             <div className="search-wrapper" style={{ padding: '20px', marginBottom: '25px', background: '#fff', borderRadius: '10px', border: '1px solid #eaeaea' }}>
-                                <div className="search-container" style={{ gridTemplateColumns: '1fr auto', gap: '20px', alignItems: 'end' }}>
+                                <div className="search-container" style={{ gridTemplateColumns: '1.2fr 1fr auto', gap: '20px', alignItems: 'end' }}>
+                                    <div className="input-group-search">
+                                        <label>Evento</label>
+                                        <select className="filter-select" value={eventoParticipantesSelecionado} onChange={(e) => setEventoParticipantesSelecionado(e.target.value)}>
+                                            <option value="">— Selecione um evento —</option>
+                                            {eventosGlobais.filter(ev => ev.parceiro === user.nome).map(ev => (
+                                                <option key={ev.id} value={ev.id}>{ev.titulo}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="input-group-search">
                                         <label>Pesquisar Participante</label>
-                                        <input type="text" className="search-input" placeholder="Pesquisar por nome ou email..." />
+                                        <input type="text" className="search-input" placeholder="Pesquisar por nome ou email..." value={buscaParticipante} onChange={(e) => setBuscaParticipante(e.target.value)} />
                                     </div>
                                     <button className="btn-search" style={{ height: '45px' }}><i className="fas fa-search"></i> Buscar</button>
                                 </div>
@@ -438,15 +549,31 @@ const ParceiroDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>Ana Beatriz</td>
-                                        <td>Certificação Cisco CCNA</td>
-                                        <td><span className="pay-tag tag-pending">🟡 Pendente</span></td>
-                                        <td className="action-buttons">
-                                            <button className="btn-icon btn-approve" title="Emitir certificado de participação" onClick={() => toastSuccess('Certificado gerado com sucesso e enviado ao e-mail do participante!')}><i className="fas fa-certificate"></i> Emitir Certificado</button>
-                                            <button className="btn-icon btn-view" onClick={() => setIsAjudaOpen(true)} title="Solicitar ajuda à WE Corp"><i className="fas fa-life-ring"></i> Pedir Ajuda</button>
-                                        </td>
-                                    </tr>
+                                    {!eventoParticipantesSelecionado ? (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center', color: '#aaa' }}>Selecione um evento acima para ver os participantes inscritos.</td></tr>
+                                    ) : loadingParticipantes ? (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center' }}><i className="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+                                    ) : participantesGlobais.filter(p => (p.nome||'').toLowerCase().includes(buscaParticipante.toLowerCase()) || (p.email||'').toLowerCase().includes(buscaParticipante.toLowerCase())).length === 0 ? (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum participante inscrito neste evento ainda.</td></tr>
+                                    ) : (
+                                        participantesGlobais
+                                            .filter(p => (p.nome||'').toLowerCase().includes(buscaParticipante.toLowerCase()) || (p.email||'').toLowerCase().includes(buscaParticipante.toLowerCase()))
+                                            .map(p => (
+                                                <tr key={p.id}>
+                                                    <td>{p.nome || '—'}</td>
+                                                    <td>{eventosGlobais.find(e => String(e.id) === String(eventoParticipantesSelecionado))?.titulo || '—'}</td>
+                                                    <td>
+                                                        {p.status === 'Confirmado' && <span className="pay-tag tag-approved">🟢 Confirmado</span>}
+                                                        {p.status === 'Pendente'   && <span className="pay-tag tag-pending">🟡 Pendente</span>}
+                                                        {!['Confirmado','Pendente'].includes(p.status) && <span className="status-tag">{p.status}</span>}
+                                                    </td>
+                                                    <td className="action-buttons">
+                                                        <button className="btn-icon btn-approve" title="Emitir certificado de participação" onClick={() => toastSuccess('Certificado gerado com sucesso e enviado ao e-mail do participante!')}><i className="fas fa-certificate"></i> Emitir Certificado</button>
+                                                        <button className="btn-icon btn-view" onClick={() => setIsAjudaOpen(true)} title="Solicitar ajuda à WE Corp"><i className="fas fa-life-ring"></i> Pedir Ajuda</button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                    )}
                                 </tbody>
                             </table>
                         </section>
@@ -624,8 +751,10 @@ const ParceiroDashboard = () => {
                             <h2><i className="fas fa-life-ring" style={{ color: 'var(--theme-terracotta)' }}></i> Suporte ao Parceiro</h2>
                             <p>Relate o problema à moderação WE Corp.</p>
                         </div>
-                        <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Descreva o problema ou dúvida..."></textarea>
-                        <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { toastSuccess('Requisição enviada!'); closeModals(); }}>Enviar Ticket</button>
+                        <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Descreva o problema ou dúvida..." value={mensagemAjuda} onChange={(e) => setMensagemAjuda(e.target.value)}></textarea>
+                        <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} disabled={enviandoTicket} onClick={enviarTicketAjuda}>
+                            {enviandoTicket ? <><i className="fas fa-spinner fa-spin"></i> Enviando...</> : 'Enviar Ticket'}
+                        </button>
                     </div>
                 </div>
             )}
@@ -642,23 +771,28 @@ const ParceiroDashboard = () => {
                         <form style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div className="input-group-search">
                                 <label>Evento Destino</label>
-                                <select className="filter-select"><option>Certificação Cisco CCNA</option></select>
+                                <select className="filter-select" value={eventoParticipantesSelecionado} onChange={(e) => setEventoParticipantesSelecionado(e.target.value)}>
+                                    <option value="">— Selecione —</option>
+                                    {eventosGlobais.filter(ev => ev.parceiro === user.nome).map(ev => (
+                                        <option key={ev.id} value={ev.id}>{ev.titulo}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="input-group-search">
                                 <label>Nome Completo</label>
-                                <input type="text" className="search-input" placeholder="Nome do aluno/cliente" />
+                                <input type="text" className="search-input" placeholder="Nome do aluno/cliente" value={formParticipante.nome} onChange={(e) => setFormParticipante({ ...formParticipante, nome: e.target.value })} />
                             </div>
                             <div style={{ display: 'flex', gap: '15px' }}>
                                 <div className="input-group-search" style={{ flex: 1 }}>
                                     <label>CPF</label>
-                                    <input type="text" className="search-input" placeholder="000.000.000-00" />
+                                    <input type="text" className="search-input" placeholder="000.000.000-00" value={formParticipante.cpf} onChange={(e) => setFormParticipante({ ...formParticipante, cpf: e.target.value })} />
                                 </div>
                                 <div className="input-group-search" style={{ flex: 1 }}>
                                     <label>E-mail</label>
-                                    <input type="email" className="search-input" placeholder="email@exemplo.com" />
+                                    <input type="email" className="search-input" placeholder="email@exemplo.com" value={formParticipante.email} onChange={(e) => setFormParticipante({ ...formParticipante, email: e.target.value })} />
                                 </div>
                             </div>
-                            <button type="button" className="btn-search btn-block" onClick={() => { toastSuccess('Participante cadastrado com sucesso!'); closeModals(); }}><i className="fas fa-check"></i> Cadastrar Participante</button>
+                            <button type="button" className="btn-search btn-block" onClick={adicionarParticipanteManual}><i className="fas fa-check"></i> Cadastrar Participante</button>
                         </form>
                     </div>
                 </div>

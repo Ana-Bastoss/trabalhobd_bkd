@@ -22,6 +22,13 @@ const AdminDashboard = () => {
     const [eventosGlobais,     setEventosGlobais]     = useState([]);
     const [clientesGlobais,    setClientesGlobais]    = useState([]); // NOVO: Estado de Clientes
 
+    // NOVO: Tickets de suporte reais (substituem a linha hardcoded da Central de Suporte)
+    const [tickets, setTickets] = useState([]);
+
+    // NOVO: Avaliações reais carregadas para o modal de Moderação de Feedbacks
+    const [avaliacoesAdmin, setAvaliacoesAdmin] = useState([]);
+    const [servicoAvalAdmin, setServicoAvalAdmin] = useState(null);
+
     // ==========================================
     // ESTADOS DE FILTROS
     // ==========================================
@@ -113,6 +120,7 @@ const AdminDashboard = () => {
                 carregarListaPrestadores();
                 carregarListaServicos();
                 carregarListaClientes(); // NOVO
+                carregarTickets(); // NOVO
             }
         } else {
             window.location.href = '/';
@@ -161,6 +169,15 @@ const AdminDashboard = () => {
             const d = await r.json();
             if (d.sucesso) setClientesGlobais(d.clientes);
         } catch (e) { console.error("Erro ao carregar clientes:", e); }
+    };
+
+    // NOVO: Carrega tickets reais de suporte
+    const carregarTickets = async () => {
+        try {
+            const r = await fetch('/api/tickets');
+            const d = await r.json();
+            if (d.sucesso) setTickets(d.tickets);
+        } catch (e) { console.error("Erro ao carregar tickets:", e); }
     };
 
     // ==========================================
@@ -609,6 +626,84 @@ const AdminDashboard = () => {
     };
 
     // ==========================================
+    // NOVO: MODERAÇÃO DE AVALIAÇÕES (Feedbacks)
+    // ==========================================
+    const carregarAvaliacoesServico = async (idServico) => {
+        try {
+            const r = await fetch(`/api/avaliacoes/${idServico}`);
+            const d = await r.json();
+            if (d.sucesso) {
+                setAvaliacoesAdmin(d.avaliacoes);
+                setServicoAvalAdmin(idServico);
+            }
+        } catch (e) { console.error('Erro ao carregar avaliações:', e); }
+    };
+
+    const excluirAvaliacaoAdmin = async (idAvaliacao) => {
+        const ok = await confirmDialog({
+            title: 'Excluir comentário',
+            message: 'Remover este comentário da página de serviços?',
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            danger: true,
+            icon: 'fa-trash'
+        });
+        if (!ok) return;
+        try {
+            const r = await fetch(`/api/avaliacoes/${idAvaliacao}`, { method: 'DELETE' });
+            const d = await r.json();
+            if (d.sucesso) {
+                toastSuccess('Comentário removido.');
+                if (servicoAvalAdmin) carregarAvaliacoesServico(servicoAvalAdmin);
+                carregarListaServicos();
+            } else {
+                toastError('Erro: ' + d.mensagem);
+            }
+        } catch (e) { toastError('Erro de conexão com o servidor.'); }
+    };
+
+    // ==========================================
+    // NOVO: GESTÃO DE TICKETS DE SUPORTE
+    // ==========================================
+    const fecharTicket = async (id) => {
+        const ok = await confirmDialog({
+            title: 'Marcar como Resolvido?',
+            message: 'O ticket será marcado como resolvido e sairá da lista de pendências.',
+            confirmLabel: 'Resolver',
+            cancelLabel: 'Cancelar'
+        });
+        if (!ok) return;
+        try {
+            const r = await fetch(`/api/tickets/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Resolvido' })
+            });
+            const d = await r.json();
+            if (d.sucesso) { toastSuccess('Ticket marcado como Resolvido!'); carregarTickets(); }
+            else toastError('Erro: ' + d.mensagem);
+        } catch (e) { toastError('Erro de conexão com o servidor.'); }
+    };
+
+    const excluirTicket = async (id) => {
+        const ok = await confirmDialog({
+            title: 'Excluir ticket',
+            message: 'Deseja excluir este ticket permanentemente?',
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            danger: true,
+            icon: 'fa-trash'
+        });
+        if (!ok) return;
+        try {
+            const r = await fetch(`/api/tickets/${id}`, { method: 'DELETE' });
+            const d = await r.json();
+            if (d.sucesso) { toastSuccess('Ticket excluído!'); carregarTickets(); }
+            else toastError('Erro: ' + d.mensagem);
+        } catch (e) { toastError('Erro de conexão com o servidor.'); }
+    };
+
+    // ==========================================
     // GERAÇÃO DE CONTRATO EM PDF
     // ==========================================
     const handleDownloadContratoParceiro = (parceiro) => {
@@ -749,7 +844,9 @@ const AdminDashboard = () => {
                         </li>
                         <li className={activeTab === 'requisicoes' ? 'active' : ''} onClick={() => setActiveTab('requisicoes')}>
                             <i className="fas fa-inbox"></i> Central de Suporte
-                            <span className="notification-badge">1</span>
+                            {tickets.filter(t => t.status === 'Aberto').length > 0 && (
+                                <span className="notification-badge">{tickets.filter(t => t.status === 'Aberto').length}</span>
+                            )}
                         </li>
                     </ul>
                 </aside>
@@ -966,7 +1063,7 @@ const AdminDashboard = () => {
                                                 <button className="btn-icon btn-delete"  onClick={() => mudarStatusServico(s.id, 'Recusado')}><i className="fas fa-times"></i> Recusar</button>
                                             </>}
                                             <button className="btn-icon btn-view"   onClick={() => abrirDetalhesServico(s.id)}><i className="fas fa-eye"></i> Detalhes</button>
-                                            <button className="btn-icon btn-view"   onClick={() => openModal('modalComentarios')}><i className="fas fa-comments"></i> Feedbacks</button>
+                                            <button className="btn-icon btn-view"   onClick={() => { carregarAvaliacoesServico(s.id); openModal('modalComentarios'); }}><i className="fas fa-comments"></i> Feedbacks</button>
                                             <button className="btn-icon btn-edit"   onClick={() => abrirEdicaoServico(s.id)}><i className="fas fa-edit"></i> Editar</button>
                                             <button className="btn-icon btn-delete" onClick={() => excluirServico(s.id, s.titulo)} style={{ background: '#fce4e4', color: '#c0392b' }}><i className="fas fa-trash"></i></button>
                                         </td>
@@ -1020,17 +1117,35 @@ const AdminDashboard = () => {
                     <section className={`admin-tab-content ${activeTab === 'requisicoes' ? 'active' : ''}`}>
                         <div className="tab-header"><h2>Central de Suporte (Help Desk)</h2></div>
                         <table className="admin-table">
-                            <thead><tr><th>Remetente</th><th>Tipo</th><th>Assunto</th><th>Status</th><th>Ações</th></tr></thead>
+                            <thead><tr><th>Remetente</th><th>Tipo</th><th>Assunto</th><th>Mensagem</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
                             <tbody>
-                                <tr>
-                                    <td><strong>Cisco Academy</strong></td>
-                                    <td>Parceiro</td>
-                                    <td>Aprovação de Pgto: Aluna Ana Beatriz</td>
-                                    <td><span className="status-tag pending">Em Aberto</span></td>
-                                    <td className="action-buttons">
-                                        <button className="btn-icon btn-view"><i className="fas fa-eye"></i> Detalhes</button>
-                                    </td>
-                                </tr>
+                                {tickets.length === 0 ? (
+                                    <tr><td colSpan="7" style={{ textAlign: 'center', color: '#aaa' }}>Nenhum ticket de suporte registrado.</td></tr>
+                                ) : tickets.map(t => (
+                                    <tr key={t.id}>
+                                        <td><strong>{t.nome_remetente}</strong></td>
+                                        <td>
+                                            {t.tipo_remetente === 'patrocinador' ? 'Patrocinador'
+                                             : t.tipo_remetente === 'parceiro'      ? 'Parceiro'
+                                             : t.tipo_remetente === 'prestador'     ? 'Prestador'
+                                             : 'Cliente'}
+                                        </td>
+                                        <td>{t.assunto}</td>
+                                        <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.mensagem}</td>
+                                        <td>
+                                            {t.status === 'Aberto'
+                                                ? <span className="status-tag pending">Em Aberto</span>
+                                                : <span className="status-tag active">Resolvido</span>}
+                                        </td>
+                                        <td>{new Date(t.data_abertura).toLocaleDateString('pt-BR')}</td>
+                                        <td className="action-buttons">
+                                            {t.status === 'Aberto' && (
+                                                <button className="btn-icon btn-approve" onClick={() => fecharTicket(t.id)}><i className="fas fa-check"></i> Resolver</button>
+                                            )}
+                                            <button className="btn-icon btn-delete" onClick={() => excluirTicket(t.id)}><i className="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </section>
@@ -1366,19 +1481,29 @@ const AdminDashboard = () => {
                 <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
                     <div className="admin-profile-modal" style={{ maxWidth: '600px' }}>
                         <button className="close-modal" onClick={closeModals}><i className="fas fa-times"></i></button>
-                        <div className="modal-header-profile"><h2><i className="fas fa-comments" style={{ color: 'var(--theme-teal-main)' }}></i> Moderação de Feedbacks</h2></div>
+                        <div className="modal-header-profile"><h2><i className="fas fa-comments" style={{ color: 'var(--theme-teal-main)' }}></i> Moderação de Feedbacks</h2><p>Avaliações publicadas pelos clientes neste serviço.</p></div>
                         <div className="reviews-list" style={{ marginTop: '20px', maxHeight: '400px', overflowY: 'auto' }}>
-                            <div className="review-item" style={{ borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                    <strong>Carlos E.</strong>
-                                    <span style={{ color: '#f39c12', fontSize: '0.8rem' }}><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></span>
+                            {avaliacoesAdmin.length === 0 ? (
+                                <p style={{ color: '#aaa', textAlign: 'center', fontStyle: 'italic', padding: '20px 0' }}>Nenhuma avaliação encontrada para este serviço.</p>
+                            ) : avaliacoesAdmin.map(av => (
+                                <div key={av.id} className="review-item" style={{ borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                        <div>
+                                            <strong>{av.autor_nome}</strong>
+                                            <span style={{ fontSize: '0.78rem', color: '#aaa', marginLeft: '8px' }}>
+                                                {new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}
+                                            </span>
+                                        </div>
+                                        <span style={{ color: '#f39c12', fontSize: '0.8rem' }}>
+                                            {'★'.repeat(av.nota)}{'☆'.repeat(5 - av.nota)}
+                                        </span>
+                                    </div>
+                                    {av.comentario && <p style={{ fontSize: '0.9rem', color: '#555' }}>{av.comentario}</p>}
+                                    <button className="btn-icon btn-delete" style={{ padding: '4px 8px', fontSize: '0.75rem', marginTop: '10px' }} onClick={() => excluirAvaliacaoAdmin(av.id)}>
+                                        <i className="fas fa-trash"></i> Excluir
+                                    </button>
                                 </div>
-                                <p style={{ fontSize: '0.9rem', color: '#555' }}>Serviço excelente! Identificaram falhas críticas na nossa rede.</p>
-                                <button className="btn-icon btn-delete" style={{ padding: '4px 8px', fontSize: '0.75rem', marginTop: '10px' }} onClick={async () => {
-                                    const ok = await confirmDialog({ title: 'Excluir comentário', message: 'Remover este comentário da página de serviços?', confirmLabel: 'Excluir', danger: true, icon: 'fa-trash' });
-                                    if (ok) { toastSuccess('Comentário removido.'); closeModals(); }
-                                }}><i className="fas fa-trash"></i> Excluir</button>
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </div>

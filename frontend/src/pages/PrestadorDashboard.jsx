@@ -35,6 +35,15 @@ const PrestadorDashboard = () => {
     // NOVO: Estado para abrir o Modal do Stripe
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
+    // NOVO: Avaliações reais do serviço aberto em detalhes
+    const [avaliacoesServico, setAvaliacoesServico] = useState([]);
+    const [loadingAvaliacoes, setLoadingAvaliacoes] = useState(false);
+
+    // NOVO: Tickets de suporte reais do prestador
+    const [tickets, setTickets] = useState([]);
+    const [formTicket, setFormTicket] = useState({ clienteRelacionado: '', motivo: 'Dúvida sobre Pagamento de Cliente', mensagem: '' });
+    const [enviandoTicket, setEnviandoTicket] = useState(false);
+
     // ==========================================
     // FUNÇÕES DE MODAL
     // ==========================================
@@ -60,6 +69,7 @@ const PrestadorDashboard = () => {
         }
         setUser(u);
         carregarServicos(u);
+        carregarTickets(u);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -76,6 +86,19 @@ const PrestadorDashboard = () => {
             }
         } catch (e) {
             console.error('Erro ao carregar serviços:', e);
+        }
+    };
+
+    // ==========================================
+    // NOVO: CARREGAR TICKETS DO PRESTADOR
+    // ==========================================
+    const carregarTickets = async (u) => {
+        try {
+            const resposta = await fetch(`/api/tickets/usuario/${u.id}`);
+            const dados    = await resposta.json();
+            if (dados.sucesso) setTickets(dados.tickets);
+        } catch (e) {
+            console.error('Erro ao carregar tickets:', e);
         }
     };
 
@@ -123,11 +146,21 @@ const PrestadorDashboard = () => {
     // ==========================================
     // DETALHES DO SERVIÇO
     // ==========================================
-    const abrirDetalhes = (id) => {
+    const abrirDetalhes = async (id) => {
         const s = servicosGlobais.find(x => x.id === id);
         if (!s) return;
         setServicoSelecionado(s);
         openModal('detalhesServico');
+        // NOVO: busca avaliações reais do serviço
+        setLoadingAvaliacoes(true);
+        try {
+            const resposta = await fetch(`/api/avaliacoes/${id}`);
+            const dados    = await resposta.json();
+            if (dados.sucesso) setAvaliacoesServico(dados.avaliacoes);
+        } catch (e) {
+            console.error('Erro ao buscar avaliações:', e);
+        }
+        setLoadingAvaliacoes(false);
     };
 
     // ==========================================
@@ -143,6 +176,70 @@ const PrestadorDashboard = () => {
     const abrirNova = () => {
         setFormServico({ id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', imagem: null });
         openModal('novoServico');
+    };
+
+    // ==========================================
+    // NOVO: EXCLUIR AVALIAÇÃO (moderação do prestador)
+    // ==========================================
+    const excluirAvaliacao = async (idAvaliacao) => {
+        const ok = await confirmDialog({
+            title: 'Excluir avaliação',
+            message: 'Deseja remover esta avaliação do seu serviço?',
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            danger: true,
+            icon: 'fa-trash'
+        });
+        if (!ok) return;
+        try {
+            const resposta = await fetch(`/api/avaliacoes/${idAvaliacao}`, { method: 'DELETE' });
+            const dados    = await resposta.json();
+            if (dados.sucesso) {
+                toastSuccess('Avaliação removida!');
+                setAvaliacoesServico(prev => prev.filter(a => a.id !== idAvaliacao));
+                carregarServicos(user);
+            } else {
+                toastError(dados.mensagem);
+            }
+        } catch (e) {
+            toastError('Erro de conexão com o servidor.');
+        }
+    };
+
+    // ==========================================
+    // NOVO: ENVIAR TICKET DE SUPORTE (real, via API)
+    // ==========================================
+    const enviarTicket = async () => {
+        if (!formTicket.mensagem.trim()) { toastError('Escreva uma mensagem antes de enviar.'); return; }
+        setEnviandoTicket(true);
+        const assunto = formTicket.clienteRelacionado && formTicket.clienteRelacionado !== 'Nenhum / Problema Geral'
+            ? `${formTicket.motivo} — ${formTicket.clienteRelacionado}`
+            : formTicket.motivo;
+        try {
+            const resposta = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_usuario: user.id,
+                    nome_remetente: user.nome,
+                    tipo_remetente: 'prestador',
+                    assunto,
+                    mensagem: formTicket.mensagem
+                })
+            });
+            const dados = await resposta.json();
+            if (dados.sucesso) {
+                toastSuccess('Requisição enviada ao administrador!');
+                setFormTicket({ clienteRelacionado: '', motivo: 'Dúvida sobre Pagamento de Cliente', mensagem: '' });
+                closeModals();
+                carregarTickets(user);
+            } else {
+                toastError(dados.mensagem);
+            }
+        } catch (e) {
+            toastError('Erro de conexão com o servidor.');
+        }
+        setEnviandoTicket(false);
     };
 
     const handleLogout = async () => {
@@ -506,6 +603,43 @@ const PrestadorDashboard = () => {
                             <h3>Descrição do Serviço</h3>
                             <p style={{ fontSize: '0.95rem', color: '#555', marginTop: '10px', lineHeight: 1.7 }}>{servicoSelecionado.descricao || 'Sem descrição disponível.'}</p>
                         </div>
+
+                        {/* NOVO: Avaliações reais vindas da API */}
+                        <div className="info-section" style={{ padding: '20px', marginTop: '20px', marginBottom: 0 }}>
+                            <h3>Avaliações Recebidas</h3>
+                            {loadingAvaliacoes ? (
+                                <p style={{ color: '#999', marginTop: '10px' }}><i className="fas fa-spinner fa-spin"></i> Carregando avaliações...</p>
+                            ) : avaliacoesServico.length === 0 ? (
+                                <p style={{ color: '#aaa', marginTop: '10px', fontStyle: 'italic' }}>Nenhuma avaliação recebida ainda.</p>
+                            ) : (
+                                <div style={{ marginTop: '15px', maxHeight: '260px', overflowY: 'auto' }}>
+                                    {avaliacoesServico.map(av => (
+                                        <div key={av.id} style={{ borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '0.92rem' }}>{av.autor_nome}</strong>
+                                                    <span style={{ fontSize: '0.78rem', color: '#aaa', marginLeft: '8px' }}>
+                                                        {new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}
+                                                    </span>
+                                                    <div style={{ color: '#f39c12', fontSize: '0.85rem', marginTop: '3px' }}>
+                                                        {'★'.repeat(av.nota)}{'☆'.repeat(5 - av.nota)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="btn-icon btn-delete"
+                                                    style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                                                    onClick={() => excluirAvaliacao(av.id)}
+                                                    title="Excluir avaliação"
+                                                >
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            {av.comentario && <p style={{ fontSize: '0.88rem', color: '#555', marginTop: '6px', lineHeight: 1.5 }}>{av.comentario}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -522,7 +656,8 @@ const PrestadorDashboard = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div className="input-group-search">
                                 <label>Cliente Relacionado</label>
-                                <select className="filter-select">
+                                <select className="filter-select" value={formTicket.clienteRelacionado} onChange={e => setFormTicket(f => ({ ...f, clienteRelacionado: e.target.value }))}>
+                                    <option value="">Selecione...</option>
                                     <option>Ana Beatriz</option>
                                     <option>Empresa Alpha S.A.</option>
                                     <option>Nenhum / Problema Geral</option>
@@ -530,7 +665,7 @@ const PrestadorDashboard = () => {
                             </div>
                             <div className="input-group-search">
                                 <label>Motivo</label>
-                                <select className="filter-select">
+                                <select className="filter-select" value={formTicket.motivo} onChange={e => setFormTicket(f => ({ ...f, motivo: e.target.value }))}>
                                     <option>Dúvida sobre Pagamento de Cliente</option>
                                     <option>Problema na Execução do Serviço</option>
                                     <option>Cancelamento / Reembolso</option>
@@ -539,10 +674,10 @@ const PrestadorDashboard = () => {
                             </div>
                             <div className="input-group-search">
                                 <label>Mensagem para o Administrador</label>
-                                <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Explique o que ocorreu..."></textarea>
+                                <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Explique o que ocorreu..." value={formTicket.mensagem} onChange={e => setFormTicket(f => ({ ...f, mensagem: e.target.value }))}></textarea>
                             </div>
-                            <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { toastSuccess('Requisição enviada ao administrador!'); closeModals(); }}>
-                                <i className="fas fa-envelope"></i> Enviar Ticket
+                            <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} disabled={enviandoTicket} onClick={enviarTicket}>
+                                {enviandoTicket ? <><i className="fas fa-spinner fa-spin"></i> Enviando...</> : <><i className="fas fa-envelope"></i> Enviar Ticket</>}
                             </button>
                         </div>
                     </div>
