@@ -3,6 +3,7 @@ import '../assets/style.css';
 // ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
+import { jsPDF } from 'jspdf';
 // ────────────────────────────────────────────────────────────────────────────
 
 const ParceiroDashboard = () => {
@@ -223,6 +224,48 @@ const ParceiroDashboard = () => {
         setIsAjudaOpen(false);
         setIsNovoParticipanteOpen(false);
         setIsDetalhesContratoOpen(false);
+    };
+
+    // ==========================================
+    // GERAÇÃO DE CONTRATO EM PDF
+    // ==========================================
+    const handleDownloadContrato = () => {
+        const doc = new jsPDF();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("CONTRATO DE PARCERIA WE CORP", 105, 20, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+
+        const textoContrato = [
+            `CONTRATANTE: ${user.nome}`,
+            `TIPO DE PARCERIA: ${user.tipo === 'patrocinador' ? 'Patrocinador Master' : 'Parceiro Institucional'}`,
+            `DATA DO DOCUMENTO: ${new Date().toLocaleDateString('pt-BR')}`,
+            "",
+            "1. OBJETO",
+            "O presente contrato tem por objeto firmar a parceria entre a WE Corp e o",
+            `${user.nome} para a realização e divulgação de eventos na plataforma.`,
+            "",
+            "2. OBRIGAÇÕES E BENEFÍCIOS",
+            "- A WE Corp se compromete a fornecer visibilidade prioritária, suporte VIP",
+            "  (tempo de resposta inferior a 4 horas úteis) e taxa de mediação reduzida (15%).",
+            "- O Parceiro/Patrocinador manterá a regularidade do pagamento do valor mensal",
+            "  de R$ 1.250,00 para garantir a ativação destes benefícios.",
+            "",
+            "3. VALIDADE E ACEITE",
+            "A concordância com estes termos é garantida digitalmente pelo aceite na",
+            "plataforma durante o cadastro e pagamento da fatura.",
+            "",
+            "Assinado eletronicamente por:",
+            "WE Corp Administração",
+            user.nome
+        ];
+
+        doc.text(textoContrato, 20, 40);
+        doc.save(`Contrato_WECorp_${user.nome.replace(/\s+/g, '_')}.pdf`);
+        toastSuccess('Download do contrato em PDF concluído!');
     };
 
     return (
@@ -464,7 +507,7 @@ const ParceiroDashboard = () => {
                                         <button className="btn-search" style={{ backgroundColor: 'var(--theme-teal-elegant)', width: 'fit-content', fontSize: '0.9rem' }} onClick={() => setIsDetalhesContratoOpen(true)}>
                                             <i className="fas fa-info-circle"></i> Mais Detalhes / Ver Contrato Completo
                                         </button>
-                                        <a href="#" style={{ color: 'var(--theme-teal-elegant)', fontWeight: 600, textDecoration: 'none' }}>
+                                        <a href="#" onClick={(e) => { e.preventDefault(); handleDownloadContrato(); }} style={{ color: 'var(--theme-teal-elegant)', fontWeight: 600, textDecoration: 'none' }}>
                                             <i className="fas fa-download"></i> Baixar Contrato Assinado (PDF)
                                         </a>
                                     </div>

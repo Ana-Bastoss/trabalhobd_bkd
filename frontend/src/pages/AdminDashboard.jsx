@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
-// ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
-// ────────────────────────────────────────────────────────────────────────────
+import { jsPDF } from 'jspdf';
 
 const AdminDashboard = () => {
     // ==========================================
@@ -46,37 +45,38 @@ const AdminDashboard = () => {
     const [formPrestador, setFormPrestador] = useState({
         id: '', nome: '', segmento: '', email: '', telefone: '', descricao: '', plano: 'Básico', status: 'Ativo'
     });
+    // NOVO: Adicionado status inicial 'Ativo' no formServico
     const [formServico, setFormServico] = useState({
-        id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', id_prestador: '', destaque: false, imagem: null
+        id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', id_prestador: '', destaque: false, imagem: null, status: 'Ativo'
     });
+    // NOVO: Adicionado status inicial 'Ativo' no formEvento
     const [formEvento, setFormEvento] = useState({
         id: '', imagem: null, parceiro: 'WE Corp Oficial', heads: '', titulo: '',
         categoria: 'Startups e Inovação', valor: '', data: '', horario: '',
-        local: '', descricao: '', conteudo: '', certificacao: 'nao', textocert: ''
+        local: '', descricao: '', conteudo: '', certificacao: 'nao', textocert: '', status: 'Ativo'
     });
     const [certificacaoInclusa, setCertificacaoInclusa] = useState('nao');
 
     // Itens selecionados para modais de visualização
     const [parceiroSelecionado, setParceiroSelecionado] = useState(null);
     const [servicoSelecionado,  setServicoSelecionado]  = useState(null);
+    const [eventoSelecionado,   setEventoSelecionado]   = useState(null);
 
     // ==========================================
-    // ⚠️ CORREÇÃO: openModal e closeModals definidos AQUI,
-    //    antes de qualquer CRUD que os chame.
-    //    No original, eram const declarados depois → ReferenceError.
+    // FUNÇÕES DE MODAL
     // ==========================================
     const openModal   = (modalName) => setActiveModal(modalName);
     const closeModals = () => {
         setActiveModal(null);
         setParceiroSelecionado(null);
         setServicoSelecionado(null);
+        setEventoSelecionado(null);
     };
 
     const toggleSubmenu = (menuName) => {
         setOpenSubmenus(prev => ({ ...prev, [menuName]: !prev[menuName] }));
     };
 
-    // ── window.confirm → confirmDialog ──────────────────────────────────────
     const handleLogout = async () => {
         const ok = await confirmDialog({
             title: 'Encerrar sessão',
@@ -89,7 +89,6 @@ const AdminDashboard = () => {
             window.location.href = '/';
         }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // EFEITO: Verificar sessão e carregar dados
@@ -169,9 +168,11 @@ const AdminDashboard = () => {
         const busca = filtroBuscaServico.toLowerCase();
         const matchBusca   = s.titulo.toLowerCase().includes(busca) || (s.nome_prestador && s.nome_prestador.toLowerCase().includes(busca));
         let matchStatus    = true;
-        if (filtroStatusServico === 'Ativo')    matchStatus = s.status === 'Ativo';
+        if (filtroStatusServico === 'Ativo')          matchStatus = s.status === 'Ativo';
+        else if (filtroStatusServico === 'Inativo')   matchStatus = s.status === 'Inativo';
         else if (filtroStatusServico === 'Pendente')  matchStatus = s.status === 'Pendente';
-        else if (filtroStatusServico === 'Recusado') matchStatus = s.status === 'Recusado';
+        else if (filtroStatusServico === 'Recusado')  matchStatus = s.status === 'Recusado';
+        
         const matchEmpresa = filtroEmpresaServico === 'Todos' ? true : s.nome_prestador === filtroEmpresaServico;
         return matchBusca && matchStatus && matchEmpresa;
     });
@@ -181,9 +182,11 @@ const AdminDashboard = () => {
     const eventosFiltrados = eventosGlobais.filter(evento => {
         const matchNome    = evento.titulo.toLowerCase().includes(filtroNomeEvento.toLowerCase());
         let matchStatus    = true;
-        if (filtroStatusEvento === 'Pendentes')  matchStatus = evento.status === 'Pendente';
-        else if (filtroStatusEvento === 'Ativos')   matchStatus = evento.status === 'Ativo';
+        if (filtroStatusEvento === 'Pendentes')      matchStatus = evento.status === 'Pendente';
+        else if (filtroStatusEvento === 'Ativos')    matchStatus = evento.status === 'Ativo';
+        else if (filtroStatusEvento === 'Inativos')  matchStatus = evento.status === 'Inativo';
         else if (filtroStatusEvento === 'Recusados') matchStatus = evento.status === 'Recusado';
+        
         const matchParceiro = filtroParceiroEvento === 'Todos' ? true : evento.parceiro === filtroParceiroEvento;
         let matchData = true;
         if (filtroDataInicio && evento.data_evento < filtroDataInicio) matchData = false;
@@ -226,7 +229,6 @@ const AdminDashboard = () => {
         openModal('modalParceiro');
     };
 
-    // ── alert → toast, window.confirm → confirmDialog ───────────────────────
     const salvarParceiro = async () => {
         if (!formParceiro.nome || !formParceiro.tipo) {
             toastError('Nome e Tipo são obrigatórios.');
@@ -260,7 +262,6 @@ const AdminDashboard = () => {
             else toastError('Erro: ' + d.mensagem);
         } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // PRESTADORES - CRUD
@@ -277,7 +278,6 @@ const AdminDashboard = () => {
         openModal('modalCadastroPrestador');
     };
 
-    // ── alert → toast, window.confirm → confirmDialog ───────────────────────
     const salvarPrestador = async () => {
         if (!formPrestador.nome) {
             toastError('O nome do prestador é obrigatório.');
@@ -311,13 +311,12 @@ const AdminDashboard = () => {
             else toastError('Erro: ' + d.mensagem);
         } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // SERVIÇOS - CRUD
     // ==========================================
     const abrirCadastroServico = () => {
-        setFormServico({ id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', id_prestador: '', destaque: false, imagem: null });
+        setFormServico({ id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', id_prestador: '', destaque: false, imagem: null, status: 'Ativo' });
         openModal('modalAdminNovoServico');
     };
 
@@ -325,7 +324,8 @@ const AdminDashboard = () => {
         const s  = servicosGlobais.find(x => x.id === id);
         if (!s) return;
         const pr = prestadoresGlobais.find(p => p.nome === s.nome_prestador);
-        setFormServico({ id: s.id, titulo: s.titulo, categoria: s.categoria || 'Tecnologia', valor: s.valor || '', descricao: s.descricao || '', id_prestador: pr ? String(pr.id) : '', destaque: s.destaque == 1, imagem: null });
+        // NOVO: resgatar status no modal de edição
+        setFormServico({ id: s.id, titulo: s.titulo, categoria: s.categoria || 'Tecnologia', valor: s.valor || '', descricao: s.descricao || '', id_prestador: pr ? String(pr.id) : '', destaque: s.destaque == 1, imagem: null, status: s.status || 'Ativo' });
         openModal('modalAdminNovoServico');
     };
 
@@ -336,7 +336,6 @@ const AdminDashboard = () => {
         openModal('modalDetalhesServico');
     };
 
-    // ── alert → toast, window.confirm → confirmDialog ───────────────────────
     const salvarServico = async () => {
         if (!formServico.titulo) {
             toastError('O título da postagem é obrigatório.');
@@ -351,8 +350,10 @@ const AdminDashboard = () => {
         fd.append('id_prestador',   formServico.id_prestador || '');
         fd.append('nome_prestador', pr ? pr.nome : '');
         fd.append('destaque',       formServico.destaque ? 1 : 0);
+        fd.append('status',         formServico.status); // NOVO: envia o status no formData
         fd.append('tipoCriador',    user.tipo);
         if (formServico.imagem) fd.append('imagem', formServico.imagem);
+        
         const url    = formServico.id ? `/api/servicos/${formServico.id}` : '/api/servicos';
         const method = formServico.id ? 'PUT' : 'POST';
         try {
@@ -397,13 +398,12 @@ const AdminDashboard = () => {
             else toastError('Erro: ' + d.mensagem);
         } catch (e) { toastError('Erro de conexão.'); }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // EVENTOS - CRUD
     // ==========================================
     const abrirNovoEvento = () => {
-        setFormEvento({ id: '', imagem: null, parceiro: 'WE Corp Oficial', heads: '', titulo: '', categoria: 'Startups e Inovação', valor: '', data: '', horario: '', local: '', descricao: '', conteudo: '', certificacao: 'nao', textocert: '' });
+        setFormEvento({ id: '', imagem: null, parceiro: 'WE Corp Oficial', heads: '', titulo: '', categoria: 'Startups e Inovação', valor: '', data: '', horario: '', local: '', descricao: '', conteudo: '', certificacao: 'nao', textocert: '', status: 'Ativo' });
         setCertificacaoInclusa('nao');
         openModal('modalAdminNovoEvento');
     };
@@ -414,14 +414,21 @@ const AdminDashboard = () => {
             const d = await r.json();
             if (d.sucesso) {
                 const e = d.evento;
-                setFormEvento({ id: e.id, imagem: null, parceiro: e.parceiro || 'WE Corp Oficial', heads: e.heads || '', titulo: e.titulo || '', categoria: e.categoria || 'Startups e Inovação', valor: e.valor || '', data: e.data_evento || '', horario: e.horario || '', local: e.local || '', descricao: e.descricao || '', conteudo: e.conteudo || '', certificacao: e.certificacao_inclusa || 'nao', textocert: e.texto_certificacao || '' });
+                // NOVO: resgatar status no modal de edição
+                setFormEvento({ id: e.id, imagem: null, parceiro: e.parceiro || 'WE Corp Oficial', heads: e.heads || '', titulo: e.titulo || '', categoria: e.categoria || 'Startups e Inovação', valor: e.valor || '', data: e.data_evento || '', horario: e.horario || '', local: e.local || '', descricao: e.descricao || '', conteudo: e.conteudo || '', certificacao: e.certificacao_inclusa || 'nao', textocert: e.texto_certificacao || '', status: e.status || 'Ativo' });
                 setCertificacaoInclusa(e.certificacao_inclusa || 'nao');
                 openModal('modalAdminNovoEvento');
             }
         } catch (e) { toastError('Erro ao buscar dados do evento.'); }
     };
 
-    // ── alert → toast, window.confirm → confirmDialog ───────────────────────
+    const abrirDetalhesEvento = (id) => {
+        const ev = eventosGlobais.find(x => x.id === id);
+        if (!ev) return;
+        setEventoSelecionado(ev);
+        openModal('modalDetalhesEvento');
+    };
+
     const salvarNovoEvento = async () => {
         if (!formEvento.titulo || !formEvento.data || !formEvento.local) {
             toastError('Preencha pelo menos Título, Data e Local.');
@@ -440,8 +447,10 @@ const AdminDashboard = () => {
         fd.append('conteudo',            formEvento.conteudo);
         fd.append('certificacao_inclusa',formEvento.certificacao);
         fd.append('texto_certificacao',  formEvento.textocert);
+        fd.append('status',              formEvento.status); // NOVO: envia o status no formData
         fd.append('tipoCriador',         user.tipo);
         if (formEvento.imagem) fd.append('imagem', formEvento.imagem);
+        
         const url    = formEvento.id ? `/api/eventos/${formEvento.id}` : '/api/eventos';
         const method = formEvento.id ? 'PUT' : 'POST';
         try {
@@ -486,7 +495,87 @@ const AdminDashboard = () => {
             else toastError('Erro: ' + d.mensagem);
         } catch (e) { toastError('Erro de conexão.'); }
     };
-    // ────────────────────────────────────────────────────────────────────────
+
+    // ==========================================
+    // GERAÇÃO DE CONTRATO EM PDF
+    // ==========================================
+    const handleDownloadContratoParceiro = (parceiro) => {
+        const doc = new jsPDF();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("CONTRATO DE PARCERIA WE CORP", 105, 20, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+
+        const textoContrato = [
+            `CONTRATANTE: ${parceiro.nome || 'Parceiro'}`,
+            `TIPO DE PARCERIA: ${parceiro.tipo === 'patrocinador' ? 'Patrocinador Master' : 'Parceiro Institucional'}`,
+            `DATA DO DOCUMENTO: ${new Date().toLocaleDateString('pt-BR')}`,
+            "",
+            "1. OBJETO",
+            "O presente contrato tem por objeto firmar a parceria entre a WE CORP e o",
+            `${parceiro.nome || 'Parceiro'} para a realização e divulgação de eventos na plataforma.`,
+            "",
+            "2. OBRIGAÇÕES E BENEFÍCIOS",
+            "- A WE CORP se compromete a fornecer visibilidade prioritária, suporte VIP",
+            "  (tempo de resposta inferior a 4 horas úteis) e taxa de mediação reduzida (15%).",
+            "- O Parceiro/Patrocinador manterá a regularidade do pagamento do valor mensal",
+            "  de R$ 1.250,00 para garantir a ativação destes benefícios.",
+            "",
+            "3. VALIDADE E ACEITE",
+            "A concordância com estes termos é garantida digitalmente pelo aceite na",
+            "plataforma durante o cadastro e pagamento da fatura.",
+            "",
+            "Assinado eletronicamente por:",
+            "WE CORP Administração",
+            parceiro.nome || 'Parceiro'
+        ];
+
+        doc.text(textoContrato, 20, 40);
+        doc.save(`Contrato_WECORP_${(parceiro.nome || 'Parceiro').replace(/\s+/g, '_')}.pdf`);
+        toastSuccess('Download do contrato do parceiro concluído!');
+    };
+
+    const handleDownloadContratoPrestador = (prestador) => {
+        const doc = new jsPDF();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS WE CORP", 105, 20, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+
+        const textoContrato = [
+            `CONTRATADO: ${prestador.nome || 'Prestador'}`,
+            `TIPO DE PLANO: Prestador Profissional (Visibilidade Ouro)`,
+            `DATA DO DOCUMENTO: ${new Date().toLocaleDateString('pt-BR')}`,
+            "",
+            "1. OBJETO",
+            "O presente contrato estabelece os termos para a oferta, mediação e divulgação",
+            "de serviços na vitrine da plataforma WE CORP.",
+            "",
+            "2. OBRIGAÇÕES E TAXAS",
+            "- A WE CORP intermediará a comunicação e transação financeira com os clientes",
+            "  e reterá uma taxa de mediação reduzida equivalente a 10% do valor do serviço.",
+            "- O Prestador se compromete a pagar a mensalidade do plano (R$ 149,90) até o",
+            "  dia 10 de cada mês para garantir a classificação de 'Visibilidade Ouro'.",
+            "",
+            "3. VALIDADE E ACEITE",
+            "A concordância com estes termos é garantida digitalmente pelo aceite na",
+            "plataforma durante o cadastro e pagamento da fatura.",
+            "",
+            "Assinado eletronicamente por:",
+            "WE CORP Administração",
+            prestador.nome || 'Prestador'
+        ];
+
+        doc.text(textoContrato, 20, 40);
+        doc.save(`Contrato_WECORP_${(prestador.nome || 'Prestador').replace(/\s+/g, '_')}.pdf`);
+        toastSuccess('Download do contrato do prestador concluído!');
+    };
 
     // ==========================================
     // RENDER
@@ -586,6 +675,7 @@ const AdminDashboard = () => {
                                         <td className="action-buttons">
                                             <button className="btn-icon btn-view"   onClick={() => abrirPerfilParceiro(p.id)}><i className="fas fa-eye"></i> Perfil</button>
                                             <button className="btn-icon btn-view"   onClick={() => openModal('modalAssinaturaAdmin')}><i className="fas fa-file-signature"></i> Assinaturas</button>
+                                            <button className="btn-icon btn-view"   title="Baixar Contrato PDF" onClick={() => handleDownloadContratoParceiro(p)}><i className="fas fa-file-pdf"></i> PDF</button>
                                             <button className="btn-icon btn-edit"   onClick={() => abrirEdicaoParceiro(p.id)}><i className="fas fa-edit"></i> Editar</button>
                                             <button className="btn-icon btn-delete" onClick={() => excluirParceiro(p.id, p.nome)}><i className="fas fa-trash"></i></button>
                                         </td>
@@ -611,8 +701,9 @@ const AdminDashboard = () => {
                                     <label>Status</label>
                                     <select className="filter-select" value={filtroStatusEvento} onChange={e => setFiltroStatusEvento(e.target.value)}>
                                         <option value="Todos">Todos</option>
-                                        <option value="Pendentes">Pendentes</option>
                                         <option value="Ativos">Ativos</option>
+                                        <option value="Inativos">Inativos</option>
+                                        <option value="Pendentes">Pendentes</option>
                                         <option value="Recusados">Recusados</option>
                                     </select>
                                 </div>
@@ -647,13 +738,16 @@ const AdminDashboard = () => {
                                             {ev.status === 'Pendente'  && <span className="status-tag pending">Pendente</span>}
                                             {ev.status === 'Recusado'  && <span className="status-tag" style={{ background: '#fce4e4', color: '#c0392b' }}>Recusado</span>}
                                             {ev.status === 'Ativo'     && <span className="status-tag active">Ativo</span>}
+                                            {ev.status === 'Inativo'   && <span className="status-tag pending">Inativo</span>}
                                         </td>
                                         <td className="action-buttons">
-                                            <button className="btn-icon btn-approve" onClick={() => mudarStatusEvento(ev.id, 'Ativo')}    title="Aprovar"><i className="fas fa-check"></i></button>
-                                            <button className="btn-icon btn-delete"  onClick={() => mudarStatusEvento(ev.id, 'Recusado')} title="Recusar"><i className="fas fa-times"></i></button>
-                                            <button className="btn-icon btn-view"    onClick={() => window.open(`/evento-detalhes?id=${ev.id}`, '_blank')} title="Ver"><i className="fas fa-eye"></i></button>
-                                            <button className="btn-icon btn-edit"    onClick={() => abrirEdicaoEvento(ev.id)}             title="Editar"><i className="fas fa-edit"></i></button>
-                                            <button className="btn-icon btn-delete"  onClick={() => excluirEvento(ev.id, ev.titulo)}      title="Excluir" style={{ background: '#fce4e4', color: '#c0392b' }}><i className="fas fa-trash"></i></button>
+                                            {ev.status === 'Pendente' && <>
+                                                <button className="btn-icon btn-approve" onClick={() => mudarStatusEvento(ev.id, 'Ativo')}><i className="fas fa-check"></i> Aprovar</button>
+                                                <button className="btn-icon btn-delete"  onClick={() => mudarStatusEvento(ev.id, 'Recusado')}><i className="fas fa-times"></i> Recusar</button>
+                                            </>}
+                                            <button className="btn-icon btn-view"    onClick={() => abrirDetalhesEvento(ev.id)}><i className="fas fa-eye"></i> Detalhes</button>
+                                            <button className="btn-icon btn-edit"    onClick={() => abrirEdicaoEvento(ev.id)}><i className="fas fa-edit"></i> Editar</button>
+                                            <button className="btn-icon btn-delete"  onClick={() => excluirEvento(ev.id, ev.titulo)} style={{ background: '#fce4e4', color: '#c0392b' }}><i className="fas fa-trash"></i></button>
                                         </td>
                                     </tr>
                                 ))}
@@ -699,6 +793,7 @@ const AdminDashboard = () => {
                                         <td>{p.status === 'Ativo' ? <span className="status-tag active">Ativo</span> : <span className="status-tag pending">Inativo</span>}</td>
                                         <td className="action-buttons">
                                             <button className="btn-icon btn-view"   onClick={() => openModal('modalAssinaturaPrestador')}><i className="fas fa-file-signature"></i> Assinaturas</button>
+                                            <button className="btn-icon btn-view"   title="Baixar Contrato PDF" onClick={() => handleDownloadContratoPrestador(p)}><i className="fas fa-file-pdf"></i> PDF</button>
                                             <button className="btn-icon btn-edit"   onClick={() => abrirEdicaoPrestador(p.id)}><i className="fas fa-edit"></i> Editar</button>
                                             <button className="btn-icon btn-delete" onClick={() => excluirPrestador(p.id, p.nome)}><i className="fas fa-trash"></i></button>
                                         </td>
@@ -721,6 +816,7 @@ const AdminDashboard = () => {
                                     <select className="filter-select" value={filtroStatusServico} onChange={e => setFiltroStatusServico(e.target.value)}>
                                         <option value="Todos">Todos</option>
                                         <option value="Ativo">Ativos</option>
+                                        <option value="Inativo">Inativos</option>
                                         <option value="Pendente">Pendentes</option>
                                         <option value="Recusado">Recusados</option>
                                     </select>
@@ -752,6 +848,7 @@ const AdminDashboard = () => {
                                             {s.status === 'Ativo'    && <span className="status-tag active">Ativo</span>}
                                             {s.status === 'Pendente' && <span className="status-tag pending">Pendente</span>}
                                             {s.status === 'Recusado' && <span className="status-tag" style={{ background: '#fce4e4', color: '#c0392b' }}>Recusado</span>}
+                                            {s.status === 'Inativo'  && <span className="status-tag pending">Inativo</span>}
                                         </td>
                                         <td>{s.total_avaliacoes > 0 ? <><i className="fas fa-star" style={{ color: '#f39c12' }}></i> {Number(s.avaliacao).toFixed(1)} ({s.total_avaliacoes})</> : '-'}</td>
                                         <td className="action-buttons">
@@ -927,6 +1024,15 @@ const AdminDashboard = () => {
                                     </select>
                                 </div>
                                 <div className="input-group-search" style={{ flex: 1 }}><label>Valor (R$)</label><input type="number" className="search-input" value={formServico.valor} onChange={e => setFormServico(s => ({ ...s, valor: e.target.value }))} /></div>
+                                {/* ── NOVO CAMPO: STATUS NA EDIÇÃO DE SERVIÇO ── */}
+                                <div className="input-group-search" style={{ flex: 1 }}>
+                                    <label>Status</label>
+                                    <select className="filter-select" value={formServico.status} onChange={e => setFormServico(s => ({ ...s, status: e.target.value }))}>
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Inativo">Inativo</option>
+                                        <option value="Recusado">Recusado</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="input-group-search"><label>Descrição</label><textarea className="search-input" rows="4" style={{ resize: 'none' }} value={formServico.descricao} onChange={e => setFormServico(s => ({ ...s, descricao: e.target.value }))}></textarea></div>
                             <div className="input-group-search">
@@ -975,6 +1081,15 @@ const AdminDashboard = () => {
                                     </select>
                                 </div>
                                 <div className="input-group-search" style={{ flex: 1 }}><label>Valor (R$)</label><input type="number" className="search-input" value={formEvento.valor} onChange={e => setFormEvento(f => ({ ...f, valor: e.target.value }))} /></div>
+                                {/* ── NOVO CAMPO: STATUS NA EDIÇÃO DE EVENTO ── */}
+                                <div className="input-group-search" style={{ flex: 1 }}>
+                                    <label>Status</label>
+                                    <select className="filter-select" value={formEvento.status} onChange={e => setFormEvento(f => ({ ...f, status: e.target.value }))}>
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Inativo">Inativo</option>
+                                        <option value="Recusado">Recusado</option>
+                                    </select>
+                                </div>
                             </div>
                             <div style={{ display: 'flex', gap: '15px' }}>
                                 <div className="input-group-search" style={{ flex: 1 }}><label>Data <span style={{ color: 'red' }}>*</span></label><input type="date" className="search-input" value={formEvento.data} onChange={e => setFormEvento(f => ({ ...f, data: e.target.value }))} /></div>
@@ -1061,6 +1176,42 @@ const AdminDashboard = () => {
                 </div>
             )}
 
+            {/* Modal Detalhes do Evento */}
+            {activeModal === 'modalDetalhesEvento' && eventoSelecionado && (
+                <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
+                    <div className="admin-profile-modal" style={{ maxWidth: '700px', maxHeight: '88vh', overflowY: 'auto' }}>
+                        <button className="close-modal" onClick={closeModals}><i className="fas fa-times"></i></button>
+                        <div className="modal-header-profile" style={{ borderBottom: 'none', marginBottom: '5px' }}>
+                            <h2>{eventoSelecionado.titulo}</h2>
+                            <p>
+                                Organizado por: <strong style={{ color: 'var(--theme-teal-elegant)' }}>{eventoSelecionado.parceiro}</strong> &nbsp;
+                                <span className="tag" style={{ background: '#e0f7fa', color: '#00838f' }}>{eventoSelecionado.categoria}</span>
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                            {eventoSelecionado.imagem && (
+                                <img src={`/uploads/${eventoSelecionado.imagem}`} alt="Banner" style={{ width: '100%', maxHeight: '180px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #eee' }} />
+                            )}
+                            <div className="detail-card" style={{ margin: 0, flex: 1 }}>
+                                <p><strong>Data:</strong> {eventoSelecionado.data_evento ? new Date(eventoSelecionado.data_evento).toLocaleDateString('pt-BR') : 'A definir'} {eventoSelecionado.horario && `- ${eventoSelecionado.horario}`}</p>
+                                <p><strong>Local:</strong> {eventoSelecionado.local || 'Não informado'}</p>
+                                <p><strong>Valor:</strong> {eventoSelecionado.valor > 0 ? `R$ ${Number(eventoSelecionado.valor).toFixed(2)}` : 'Gratuito'}</p>
+                                <p><strong>Status:</strong> {eventoSelecionado.status}</p>
+                                <p><strong>Certificação:</strong> {eventoSelecionado.certificacao_inclusa === 'sim' ? '⭐ Sim' : 'Não'}</p>
+                            </div>
+                        </div>
+                        <div className="info-section" style={{ padding: '20px', marginBottom: '15px' }}>
+                            <h3>Sobre o Evento</h3>
+                            <p style={{ fontSize: '0.95rem', color: '#555', marginTop: '10px', lineHeight: 1.7 }}>{eventoSelecionado.descricao || 'Sem descrição disponível.'}</p>
+                        </div>
+                        <div className="info-section" style={{ padding: '20px', marginBottom: 0 }}>
+                            <h3>Conteúdo</h3>
+                            <p style={{ fontSize: '0.95rem', color: '#555', marginTop: '10px', lineHeight: 1.7 }}>{eventoSelecionado.conteudo || 'Sem conteúdo cadastrado.'}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Assinatura Admin */}
             {activeModal === 'modalAssinaturaAdmin' && (
                 <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
@@ -1096,7 +1247,6 @@ const AdminDashboard = () => {
                                     <span style={{ color: '#f39c12', fontSize: '0.8rem' }}><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></span>
                                 </div>
                                 <p style={{ fontSize: '0.9rem', color: '#555' }}>Serviço excelente! Identificaram falhas críticas na nossa rede.</p>
-                                {/* ── window.confirm → confirmDialog ── */}
                                 <button className="btn-icon btn-delete" style={{ padding: '4px 8px', fontSize: '0.75rem', marginTop: '10px' }} onClick={async () => {
                                     const ok = await confirmDialog({ title: 'Excluir comentário', message: 'Remover este comentário da página de serviços?', confirmLabel: 'Excluir', danger: true, icon: 'fa-trash' });
                                     if (ok) { toastSuccess('Comentário removido.'); closeModals(); }
@@ -1117,7 +1267,6 @@ const AdminDashboard = () => {
                             <div className="input-group-search"><label>Nome Completo</label><input type="text" className="search-input" /></div>
                             <div className="input-group-search"><label>E-mail</label><input type="email" className="search-input" /></div>
                             <div className="input-group-search"><label>CPF</label><input type="text" className="search-input" /></div>
-                            {/* ── alert → toast ── */}
                             <button type="button" className="btn-search btn-block" onClick={() => { toastError('Funcionalidade será integrada futuramente!'); closeModals(); }}><i className="fas fa-check"></i> Cadastrar</button>
                         </div>
                     </div>

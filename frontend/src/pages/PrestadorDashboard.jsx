@@ -3,6 +3,7 @@ import '../assets/style.css';
 // ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
+import { jsPDF } from 'jspdf';
 // ────────────────────────────────────────────────────────────────────────────
 
 const PrestadorDashboard = () => {
@@ -157,6 +158,50 @@ const PrestadorDashboard = () => {
         }
     };
     // ────────────────────────────────────────────────────────────────────────
+
+    // ==========================================
+    // GERAÇÃO DE CONTRATO EM PDF
+    // ==========================================
+    const handleDownloadContrato = () => {
+        const doc = new jsPDF();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS WE CORP", 105, 20, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+
+        const prestadorNome = user ? user.nome : 'Prestador Parceiro';
+
+        const textoContrato = [
+            `CONTRATADO: ${prestadorNome}`,
+            `TIPO DE PLANO: Prestador Profissional (Visibilidade Ouro)`,
+            `DATA DO DOCUMENTO: ${new Date().toLocaleDateString('pt-BR')}`,
+            "",
+            "1. OBJETO",
+            "O presente contrato estabelece os termos para a oferta, mediação e divulgação",
+            "de serviços na vitrine da plataforma WE Corp.",
+            "",
+            "2. OBRIGAÇÕES E TAXAS",
+            "- A WE Corp intermediará a comunicação e transação financeira com os clientes",
+            "  e reterá uma taxa de mediação reduzida equivalente a 10% do valor do serviço.",
+            "- O Prestador se compromete a pagar a mensalidade do plano (R$ 149,90) até o",
+            "  dia 10 de cada mês para garantir a classificação de 'Visibilidade Ouro'.",
+            "",
+            "3. VALIDADE E ACEITE",
+            "A concordância com estes termos é garantida digitalmente pelo aceite na",
+            "plataforma durante o cadastro e pagamento da fatura.",
+            "",
+            "Assinado eletronicamente por:",
+            "WE Corp Administração",
+            prestadorNome
+        ];
+
+        doc.text(textoContrato, 20, 40);
+        doc.save(`Contrato_WECorp_${prestadorNome.replace(/\s+/g, '_')}.pdf`);
+        toastSuccess('Download do contrato em PDF concluído!');
+    };
 
     // ==========================================
     // RENDER
@@ -324,9 +369,16 @@ const PrestadorDashboard = () => {
                                 <p><strong>Vencimento:</strong> Dia 10 de cada mês</p>
                                 <p><strong>Status:</strong> <span className="pay-tag tag-pending" style={{ display: 'inline-block', marginTop: '10px' }}>Fatura em Aberto</span></p>
                                 <br />
-                                <button className="btn-search" style={{ backgroundColor: 'var(--theme-teal-elegant)', padding: '8px 15px', fontSize: '0.9rem', marginTop: '10px', marginBottom: '15px' }} onClick={() => openModal('contrato')}>
-                                    <i className="fas fa-info-circle"></i> Mais Detalhes / Ver Contrato
-                                </button>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px', marginBottom: '15px' }}>
+                                    <button className="btn-search" style={{ backgroundColor: 'var(--theme-teal-elegant)', padding: '8px 15px', fontSize: '0.9rem', width: 'fit-content' }} onClick={() => openModal('contrato')}>
+                                        <i className="fas fa-info-circle"></i> Mais Detalhes / Ver Contrato
+                                    </button>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleDownloadContrato(); }} style={{ color: 'var(--theme-teal-elegant)', fontWeight: 600, textDecoration: 'none' }}>
+                                        <i className="fas fa-download"></i> Baixar Contrato Assinado (PDF)
+                                    </a>
+                                </div>
+                                
                                 <p style={{ fontSize: '0.9rem', color: '#666' }}>O não pagamento pode resultar na suspensão dos seus serviços na vitrine.</p>
                             </div>
 
