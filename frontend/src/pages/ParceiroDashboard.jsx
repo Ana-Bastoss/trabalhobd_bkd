@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
-// ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
 import { jsPDF } from 'jspdf';
+// ── NOVO: Importando o componente global de Checkout ────────────────────────
+import CheckoutModal from '../components/CheckoutModal';
 // ────────────────────────────────────────────────────────────────────────────
 
 const ParceiroDashboard = () => {
@@ -29,6 +30,9 @@ const ParceiroDashboard = () => {
     const [isAjudaOpen, setIsAjudaOpen] = useState(false);
     const [isNovoParticipanteOpen, setIsNovoParticipanteOpen] = useState(false);
     const [isDetalhesContratoOpen, setIsDetalhesContratoOpen] = useState(false);
+    
+    // NOVO: Estado para abrir o Modal do Stripe
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     // ==========================================
     // ESTADOS DO FORMULÁRIO DE EVENTOS
@@ -38,13 +42,6 @@ const ParceiroDashboard = () => {
         valor: '', data: '', horario: '', local: '', descricao: '', conteudo: '',
         certificacao: 'nao', textocert: ''
     });
-
-    // ==========================================
-    // ESTADOS DO CHECKOUT (ASSINATURA)
-    // ==========================================
-    const [metodoPagamento, setMetodoPagamento] = useState('pix');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [pixData, setPixData] = useState(null);
 
     // ==========================================
     // EFEITOS DE INICIALIZAÇÃO
@@ -121,20 +118,18 @@ const ParceiroDashboard = () => {
             }
         } catch (erro) {
             console.error(erro);
-            // ── alert → toastError ───────────────────────────────────────────
             toastError("Erro ao buscar dados do evento.");
         }
     };
 
     const salvarNovoEvento = async () => {
         if (!formEvento.titulo || !formEvento.data || !formEvento.local) {
-            // ── alert → toastError ───────────────────────────────────────────
             toastError("Por favor, preencha pelo menos o Título, Data e Local.");
             return;
         }
 
         const formData = new FormData();
-        formData.append('parceiro', user.nome); // Fixado com o nome do usuário logado
+        formData.append('parceiro', user.nome);
         formData.append('heads', formEvento.heads);
         formData.append('titulo', formEvento.titulo);
         formData.append('categoria', formEvento.categoria);
@@ -157,54 +152,21 @@ const ParceiroDashboard = () => {
             const resposta = await fetch(url, { method, body: formData });
             const dadosRetorno = await resposta.json();
             if (dadosRetorno.sucesso) {
-                // ── alert → toastSuccess ─────────────────────────────────────
                 toastSuccess(dadosRetorno.mensagem);
                 setIsNovoEventoOpen(false);
-                carregarEventos(); // Recarrega a tabela instantaneamente
+                carregarEventos(); 
             } else {
-                // ── alert → toastError ───────────────────────────────────────
                 toastError("Erro: " + dadosRetorno.mensagem);
             }
         } catch (erro) {
             console.error("Erro:", erro);
-            // ── alert → toastError ───────────────────────────────────────────
             toastError("Erro ao conectar com o servidor.");
-        }
-    };
-
-    // ==========================================
-    // LÓGICA DE PAGAMENTO (Assinatura)
-    // ==========================================
-    const processarMensalidade = async () => {
-        const valor = 1250.00; // Valor fixo da tela
-        setIsProcessing(true);
-
-        try {
-            const resposta = await fetch('/api/pagar-assinatura', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_usuario: user.id, email_cliente: user.email, metodo: metodoPagamento, valor })
-            });
-            const dados = await resposta.json();
-            if (dados.sucesso && metodoPagamento === 'pix') {
-                setPixData({ base64: dados.qr_code_base64, copiaCola: dados.qr_code_copia_cola });
-            } else {
-                // ── alert → toastError ───────────────────────────────────────
-                toastError("Aviso: " + dados.mensagem);
-                setIsProcessing(false);
-            }
-        } catch (error) {
-            console.error(error);
-            // ── alert → toastError ───────────────────────────────────────────
-            toastError("Erro ao conectar com o sistema de pagamento.");
-            setIsProcessing(false);
         }
     };
 
     // ==========================================
     // FUNÇÕES AUXILIARES
     // ==========================================
-    // ── window.confirm → confirmDialog ──────────────────────────────────────
     const handleLogout = async () => {
         const ok = await confirmDialog({
             title: 'Encerrar sessão',
@@ -217,13 +179,16 @@ const ParceiroDashboard = () => {
             window.location.href = '/';
         }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     const closeModals = () => {
         setIsNovoEventoOpen(false);
         setIsAjudaOpen(false);
         setIsNovoParticipanteOpen(false);
         setIsDetalhesContratoOpen(false);
+    };
+
+    const iniciarPagamento = () => {
+        setIsCheckoutOpen(true);
     };
 
     // ==========================================
@@ -270,7 +235,6 @@ const ParceiroDashboard = () => {
 
     return (
         <div className="admin-body">
-            {/* ── UiHost renderiza toasts e confirm dialog flutuantes ── */}
             <UiHost />
 
             {/* HEADER */}
@@ -479,7 +443,6 @@ const ParceiroDashboard = () => {
                                         <td>Certificação Cisco CCNA</td>
                                         <td><span className="pay-tag tag-pending">🟡 Pendente</span></td>
                                         <td className="action-buttons">
-                                            {/* ── alert → toastSuccess ──────────────────────────────────── */}
                                             <button className="btn-icon btn-approve" title="Emitir certificado de participação" onClick={() => toastSuccess('Certificado gerado com sucesso e enviado ao e-mail do participante!')}><i className="fas fa-certificate"></i> Emitir Certificado</button>
                                             <button className="btn-icon btn-view" onClick={() => setIsAjudaOpen(true)} title="Solicitar ajuda à WE Corp"><i className="fas fa-life-ring"></i> Pedir Ajuda</button>
                                         </td>
@@ -521,68 +484,34 @@ const ParceiroDashboard = () => {
                                         <span className="cents">,00</span>
                                     </div>
 
-                                    {!pixData && (
-                                        <div className="payment-tabs" style={{ marginTop: '20px' }}>
-                                            <button className={`payment-tab ${metodoPagamento === 'pix' ? 'active' : ''}`} onClick={() => setMetodoPagamento('pix')}><i className="fab fa-pix"></i> PIX</button>
-                                            <button className={`payment-tab ${metodoPagamento === 'cartao' ? 'active' : ''}`} onClick={() => setMetodoPagamento('cartao')}><i className="far fa-credit-card"></i> Cartão</button>
-                                            <button className={`payment-tab ${metodoPagamento === 'boleto' ? 'active' : ''}`} onClick={() => setMetodoPagamento('boleto')}><i className="fas fa-barcode"></i> Boleto</button>
-                                        </div>
-                                    )}
-
-                                    {metodoPagamento === 'pix' && !pixData && (
-                                        <div className="payment-content">
-                                            <div className="pix-area">
-                                                <i className="fas fa-qrcode" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
-                                                <p>Gerar QR Code PIX</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {metodoPagamento === 'pix' && pixData && (
-                                        <div className="payment-content">
-                                            <div className="pix-area">
-                                                <h4 style={{ color: 'var(--theme-teal-main)', marginBottom: '10px' }}>Fatura Gerada!</h4>
-                                                <img src={`data:image/jpeg;base64,${pixData.base64}`} alt="QR Code PIX" style={{ width: '200px', height: '200px', borderRadius: '10px', border: '1px solid #ccc' }} />
-                                                <p style={{ fontSize: '0.85rem', marginTop: '10px', color: '#666' }}>Ou use o código Copia e Cola:</p>
-                                                {/* ── alert → toastSuccess ao copiar ──────────────────────── */}
-                                                <input type="text" value={pixData.copiaCola} className="search-input" style={{ fontSize: '0.8rem', textAlign: 'center', marginTop: '5px' }} readOnly onClick={(e) => { e.target.select(); navigator.clipboard.writeText(e.target.value); toastSuccess('Código copiado!'); }} />
-                                                <p style={{ fontSize: '0.8rem', color: 'var(--theme-terracotta)', marginTop: '15px', fontWeight: 600 }}>Aguardando confirmação...</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {metodoPagamento === 'cartao' && !pixData && (
-                                        <div className="payment-content">
-                                            <div className="checkout-form">
-                                                <input type="text" placeholder="Número do Cartão" className="search-input" style={{ marginBottom: '10px' }} />
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <input type="text" placeholder="MM/AA" className="search-input" />
-                                                    <input type="text" placeholder="CVV" className="search-input" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {metodoPagamento === 'boleto' && !pixData && (
-                                        <div className="payment-content">
-                                            <div className="boleto-area">
-                                                <i className="fas fa-barcode" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
-                                                <p>Visualizar Boleto Bancário</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {!pixData && (
-                                        <button className="btn-search btn-checkout-final btn-block" style={{ marginTop: '20px' }} onClick={processarMensalidade} disabled={isProcessing}>
-                                            {isProcessing ? <><i className="fas fa-spinner fa-spin"></i> Processando...</> : <>Pagar Parcela <i className="fas fa-lock"></i></>}
-                                        </button>
-                                    )}
+                                    {/* Botão unificado que chama o Modal Seguro do Stripe */}
+                                    <button 
+                                        className="btn-search btn-checkout-final btn-block" 
+                                        style={{ marginTop: '20px' }} 
+                                        onClick={iniciarPagamento}
+                                    >
+                                        Pagar Parcela <i className="fas fa-lock"></i>
+                                    </button>
+                                    <p className="secure-text" style={{ marginTop: '15px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                                        <i className="fas fa-shield-alt"></i> Ambiente 100% Seguro
+                                    </p>
                                 </div>
                             </div>
                         </section>
                     )}
                 </main>
             </div>
+
+            {/* ── MODAL DO STRIPE ── */}
+            <CheckoutModal 
+                isOpen={isCheckoutOpen}
+                onClose={() => setIsCheckoutOpen(false)}
+                valor={1250}
+                descricao={`Assinatura Mensal - ${user.tipo === 'patrocinador' ? 'Patrocinador Master' : 'Parceiro Institucional'}`}
+                id_evento={null}
+                id_usuario={user?.id}
+                email_cliente={user?.email}
+            />
 
             {/* =========================================
                 MODAIS
@@ -696,7 +625,6 @@ const ParceiroDashboard = () => {
                             <p>Relate o problema à moderação WE Corp.</p>
                         </div>
                         <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Descreva o problema ou dúvida..."></textarea>
-                        {/* ── alert → toastSuccess ────────────────────────────────────── */}
                         <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { toastSuccess('Requisição enviada!'); closeModals(); }}>Enviar Ticket</button>
                     </div>
                 </div>
@@ -730,7 +658,6 @@ const ParceiroDashboard = () => {
                                     <input type="email" className="search-input" placeholder="email@exemplo.com" />
                                 </div>
                             </div>
-                            {/* ── alert → toastSuccess ──────────────────────────────────── */}
                             <button type="button" className="btn-search btn-block" onClick={() => { toastSuccess('Participante cadastrado com sucesso!'); closeModals(); }}><i className="fas fa-check"></i> Cadastrar Participante</button>
                         </form>
                     </div>

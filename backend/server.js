@@ -5,9 +5,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
 
-const client = new MercadoPagoConfig({ accessToken: 'TEST-SEU-ACCESS-TOKEN-AQUI', options: { timeout: 5000 } });
+// NOVO: Importação do Stripe substituindo o Mercado Pago
+import Stripe from 'stripe';
+
+// Configuração do Stripe com sua chave secreta (usando uma chave de teste imaginária por enquanto)
+const stripe = new Stripe('sk_test_SUA_CHAVE_SECRETA_AQUI');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -80,7 +84,6 @@ async function setupDatabase() {
     try { await db.exec("ALTER TABLE usuarios ADD COLUMN status TEXT DEFAULT 'Ativo';"); } catch (e) { /* Coluna já existe */ }
 
     // ── CORREÇÃO DO BUG DO PRESTADOR DASHBOARD ──
-    // Se você já tinha rodado o servidor antes, isso corrige os nomes divergentes no seu banco legado.
     try { 
         await db.run("UPDATE prestadores SET nome = 'TechSecurity' WHERE nome = 'TechSecurity Admin'"); 
         await db.run("UPDATE servicos SET nome_prestador = 'TechSecurity' WHERE nome_prestador = 'TechSecurity Admin'");
@@ -180,7 +183,7 @@ async function setupDatabase() {
             ['Admin WE Corp', 'admin@wecorp.com', '123', 'admin', '', 'Ativo'],
             ['Cisco Academy', 'patrocinador@cisco.com', '123', 'patrocinador', '', 'Ativo'],
             ['SENAI', 'parceiro@senai.com', '123', 'parceiro', '', 'Ativo'],
-            ['TechSecurity', 'prestador@servico.com', '123', 'prestador', '', 'Ativo'], // Nome corrigido e alinhado!
+            ['TechSecurity', 'prestador@servico.com', '123', 'prestador', '', 'Ativo'],
             ['Ana Beatriz Gonçalves Bastos', 'anabastos.redes@gmail.com', '123', 'cliente', '000.000.000-00', 'Ativo']
         ];
         for (const user of usuariosParaInserir) {
@@ -220,7 +223,6 @@ async function setupDatabase() {
     const checkPrestador = await db.get("SELECT COUNT(*) as count FROM prestadores");
     if (checkPrestador.count === 0) {
         const userTech = await db.get("SELECT id FROM usuarios WHERE email = 'prestador@servico.com'");
-        // Alinhado nome com 'TechSecurity'
         await db.run(
             `INSERT INTO prestadores (nome, segmento, email, telefone, descricao, status, plano, avaliacao, id_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             ['TechSecurity', 'Tecnologia', 'contato@techsecurity.com', '(61) 99999-0001', 'Especialistas em segurança de redes e infraestrutura corporativa, com foco em proteção de dados e compliance LGPD.', 'Ativo', 'Profissional (Ouro)', 5.0, userTech ? userTech.id : null]
@@ -253,7 +255,6 @@ async function setupDatabase() {
         const prestCloud  = await db.get("SELECT id FROM prestadores WHERE nome = 'CloudSys IT'");
         const prestNova   = await db.get("SELECT id FROM prestadores WHERE nome = 'NovaEng Soluções'");
 
-        // Alinhado nome do prestador com 'TechSecurity'
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             ['Consultoria em Cibersegurança e Redes', 'Tecnologia',
@@ -289,38 +290,47 @@ async function setupDatabase() {
 }
 
 // =========================================
-// ROTA DE PAGAMENTO (MERCADO PAGO - PIX)
+// ROTA DE PAGAMENTO (STRIPE)
 // =========================================
 app.post('/api/comprar', async (req, res) => {
-    const { id_evento, id_usuario, metodo, valor, email_cliente } = req.body;
+    const { id_evento, id_usuario, valor, email_cliente } = req.body;
+    
     try {
+        // 1. Registrar a intenção de compra no banco de dados como Pendente
         const resultDB = await db.run(`
             INSERT INTO inscricoes (id_usuario, id_evento, metodo, valor, status) 
-            VALUES (?, ?, ?, ?, 'Pendente')
-        `, [id_usuario, id_evento, metodo, valor]);
+            VALUES (?, ?, 'stripe', ?, 'Pendente')
+        `, [id_usuario, id_evento, valor]);
+        
         const idInscricao = resultDB.lastID;
-        if (metodo === 'pix') {
-            const payment = new Payment(client);
-            const requestOptions = {
-                body: {
-                    transaction_amount: Number(valor),
-                    description: `Inscrição Evento #${id_evento} - WE Corp`,
-                    payment_method_id: 'pix',
-                    payer: { email: email_cliente || 'test_user_wecorp@test.com' }
-                }
-            };
-            const respostaMP = await payment.create(requestOptions);
-            return res.json({
-                sucesso: true,
+
+        // 2. O Stripe trabalha obrigatoriamente com a menor unidade da moeda (centavos no Brasil).
+        // R$ 199,00 = 19900 centavos
+        const amount = Math.round(Number(valor) * 100);
+
+        // 3. Criar o PaymentIntent no Stripe
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount,
+            currency: 'brl',
+            payment_method_types: ['card', 'boleto'], // Define os métodos aceitos nesta transação
+            receipt_email: email_cliente || 'test_user_wecorp@test.com',
+            metadata: {
                 id_inscricao: idInscricao,
-                qr_code_base64: respostaMP.point_of_interaction.transaction_data.qr_code_base64,
-                qr_code_copia_cola: respostaMP.point_of_interaction.transaction_data.qr_code
-            });
-        }
-        res.json({ sucesso: true, mensagem: "Pedido gerado com sucesso!" });
+                id_evento: id_evento,
+                id_usuario: id_usuario
+            }
+        });
+
+        // 4. Retornar o Client Secret para o frontend renderizar os campos seguros
+        return res.json({
+            sucesso: true,
+            id_inscricao: idInscricao,
+            clientSecret: paymentIntent.client_secret
+        });
+
     } catch (error) {
-        console.error("Erro no pagamento:", error);
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao processar o pagamento com o Mercado Pago.' });
+        console.error("Erro no pagamento Stripe:", error);
+        res.status(500).json({ sucesso: false, mensagem: 'Erro ao processar o pagamento com o Stripe.' });
     }
 });
 
@@ -652,7 +662,6 @@ app.get('/api/clientes/:id', async (req, res) => {
 app.post('/api/clientes', async (req, res) => {
     const { nome, email, senha, cpf, status } = req.body;
     try {
-        // Verifica se o e-mail já existe
         const check = await db.get("SELECT id FROM usuarios WHERE email = ?", [email]);
         if (check) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail já cadastrado.' });

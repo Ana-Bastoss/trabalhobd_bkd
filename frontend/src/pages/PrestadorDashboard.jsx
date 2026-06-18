@@ -4,6 +4,8 @@ import '../assets/style.css';
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
 import { jsPDF } from 'jspdf';
+// ── NOVO: Importando o componente global de Checkout ────────────────────────
+import CheckoutModal from '../components/CheckoutModal';
 // ────────────────────────────────────────────────────────────────────────────
 
 const PrestadorDashboard = () => {
@@ -29,6 +31,9 @@ const PrestadorDashboard = () => {
     const [formServico, setFormServico] = useState({
         id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', imagem: null
     });
+
+    // NOVO: Estado para abrir o Modal do Stripe
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     // ==========================================
     // FUNÇÕES DE MODAL
@@ -85,7 +90,6 @@ const PrestadorDashboard = () => {
     // NOVA POSTAGEM — envia para a API
     // ==========================================
     const salvarServico = async () => {
-        // ── alert → toastError ───────────────────────────────────────────────
         if (!formServico.titulo) { toastError('O título do serviço é obrigatório.'); return; }
 
         const fd = new FormData();
@@ -94,7 +98,7 @@ const PrestadorDashboard = () => {
         fd.append('valor',          formServico.valor || 0);
         fd.append('descricao',      formServico.descricao);
         fd.append('nome_prestador', user.nome);
-        fd.append('tipoCriador',    'prestador'); // → status inicial = Pendente
+        fd.append('tipoCriador',    'prestador'); 
 
         if (formServico.imagem) fd.append('imagem', formServico.imagem);
 
@@ -105,16 +109,13 @@ const PrestadorDashboard = () => {
             const resposta = await fetch(url, { method, body: fd });
             const dados    = await resposta.json();
             if (dados.sucesso) {
-                // ── alert → toastSuccess ─────────────────────────────────────
                 toastSuccess(formServico.id ? 'Serviço atualizado com sucesso!' : 'Serviço enviado para aprovação da WE Corp!');
                 closeModals();
                 carregarServicos(user);
             } else {
-                // ── alert → toastError ───────────────────────────────────────
                 toastError('Erro: ' + dados.mensagem);
             }
         } catch (e) {
-            // ── alert → toastError ───────────────────────────────────────────
             toastError('Erro de conexão com o servidor.');
         }
     };
@@ -144,7 +145,6 @@ const PrestadorDashboard = () => {
         openModal('novoServico');
     };
 
-    // ── window.confirm → confirmDialog ──────────────────────────────────────
     const handleLogout = async () => {
         const ok = await confirmDialog({
             title: 'Encerrar sessão',
@@ -157,7 +157,13 @@ const PrestadorDashboard = () => {
             window.location.href = '/';
         }
     };
-    // ────────────────────────────────────────────────────────────────────────
+
+    // ==========================================
+    // INICIAR CHECKOUT
+    // ==========================================
+    const iniciarPagamento = () => {
+        setIsCheckoutOpen(true);
+    };
 
     // ==========================================
     // GERAÇÃO DE CONTRATO EM PDF
@@ -208,10 +214,8 @@ const PrestadorDashboard = () => {
     // ==========================================
     return (
         <div className="admin-body">
-            {/* ── UiHost renderiza toasts e confirm dialog flutuantes ── */}
             <UiHost />
 
-            {/* HEADER */}
             <header className="navbar-direct admin-header">
                 <div className="navbar-content" style={{ maxWidth: '100%', padding: '10px 30px' }}>
                     <div className="logo">
@@ -227,11 +231,9 @@ const PrestadorDashboard = () => {
             </header>
 
             <div className="dashboard-container">
-                {/* SIDEBAR */}
                 <aside className="admin-sidebar">
                     <div className="admin-profile">
                         <i className="fas fa-laptop-code" style={{ color: 'var(--theme-teal-main)' }}></i>
-                        {/* Nome e tipo vêm do estado user (carregado do localStorage) */}
                         <h3>{user ? user.nome : 'Carregando...'}</h3>
                         <p>Prestador de Serviço</p>
                     </div>
@@ -389,24 +391,34 @@ const PrestadorDashboard = () => {
                                     <span className="amount">149</span>
                                     <span className="cents">,90</span>
                                 </div>
-                                <div className="payment-tabs" style={{ marginTop: '20px' }}>
-                                    <button className="payment-tab active"><i className="fab fa-pix"></i> PIX</button>
-                                    <button className="payment-tab"><i className="far fa-credit-card"></i> Cartão</button>
-                                    <button className="payment-tab"><i className="fas fa-barcode"></i> Boleto</button>
-                                </div>
-                                <div className="pix-area" style={{ marginTop: '15px' }}>
-                                    <i className="fas fa-qrcode" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
-                                    <p>Gerar QR Code Copia e Cola.</p>
-                                </div>
-                                {/* ── alert → toastInfo ───────────────────────────────────── */}
-                                <button className="btn-search btn-checkout-final btn-block" style={{ marginTop: '20px' }} onClick={() => toastInfo('Integração com Mercado Pago ativa. Use o botão no ambiente real.')}>
+                                
+                                {/* Botão unificado que chama o Modal Seguro do Stripe */}
+                                <button 
+                                    className="btn-search btn-checkout-final btn-block" 
+                                    style={{ marginTop: '20px' }} 
+                                    onClick={iniciarPagamento}
+                                >
                                     Pagar Mensalidade <i className="fas fa-lock" style={{ marginLeft: '8px' }}></i>
                                 </button>
+                                <p className="secure-text" style={{ marginTop: '15px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                                    <i className="fas fa-shield-alt"></i> Ambiente 100% Seguro
+                                </p>
                             </div>
                         </div>
                     </section>
                 </main>
             </div>
+
+            {/* ── MODAL DO STRIPE ── */}
+            <CheckoutModal 
+                isOpen={isCheckoutOpen}
+                onClose={() => setIsCheckoutOpen(false)}
+                valor={149.90}
+                descricao="Assinatura Mensal - Prestador Profissional (Ouro)"
+                id_evento={null}
+                id_usuario={user?.id}
+                email_cliente={user?.email}
+            />
 
             {/* ==================== MODAIS ==================== */}
 
@@ -420,7 +432,6 @@ const PrestadorDashboard = () => {
                             <p>{formServico.id ? 'Atualize os dados abaixo.' : 'A postagem será analisada pela equipe WE Corp.'}</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {/* Campo de autoria — readonly, preenchido com nome do usuário logado */}
                             <div className="input-group-search">
                                 <label style={{ color: 'var(--theme-teal-elegant)', fontWeight: 600 }}>Publicar como (Autoria)</label>
                                 <input type="text" className="search-input" style={{ backgroundColor: '#f5f5f5' }} value={user ? user.nome : ''} readOnly />
@@ -530,7 +541,6 @@ const PrestadorDashboard = () => {
                                 <label>Mensagem para o Administrador</label>
                                 <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Explique o que ocorreu..."></textarea>
                             </div>
-                            {/* ── alert → toastSuccess ────────────────────────────────────── */}
                             <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { toastSuccess('Requisição enviada ao administrador!'); closeModals(); }}>
                                 <i className="fas fa-envelope"></i> Enviar Ticket
                             </button>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
-// ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, toastInfo } from '../lib/ui';
 import UiHost from '../components/Ui';
+// ── NOVO: Importando o componente global de Checkout ────────────────────────
+import CheckoutModal from '../components/CheckoutModal';
 // ────────────────────────────────────────────────────────────────────────────
 
 const EventoDetalhes = () => {
@@ -12,11 +13,10 @@ const EventoDetalhes = () => {
     const [evento, setEvento] = useState(null);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
     
-    // Estados do Checkout
-    const [metodoPagamento, setMetodoPagamento] = useState('pix');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [pixData, setPixData] = useState(null); // Armazenará os dados do QR Code
+    // NOVO: Estado para abrir o Modal do Stripe
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     // Estados dos Modais (Login e Cadastro)
     const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -26,6 +26,10 @@ const EventoDetalhes = () => {
     // EFEITOS (Buscando dados da API ao carregar)
     // ==========================================
     useEffect(() => {
+        // Carrega o usuário se já estiver logado
+        const str = localStorage.getItem('usuarioLogado');
+        if (str) setCurrentUser(JSON.parse(str));
+
         const carregarDetalhesEvento = async () => {
             const parametros = new URLSearchParams(window.location.search);
             const idEvento = parametros.get('id');
@@ -58,67 +62,25 @@ const EventoDetalhes = () => {
     // ==========================================
     // FUNÇÕES DE CHECKOUT E PAGAMENTO
     // ==========================================
-    const openPayment = (method) => {
-        setMetodoPagamento(method);
-    };
-
-    const processarPagamento = async () => {
+    const iniciarCompra = () => {
         // 1. Verifica se o usuário está logado
         const userStr = localStorage.getItem('usuarioLogado');
         if (!userStr) {
-            // ── alert → toastInfo ────────────────────────────────────────────
             toastInfo("Você precisa fazer login para adquirir um ingresso!");
             setIsLoginOpen(true);
             return;
         }
 
         const usuario = JSON.parse(userStr);
-        const idEvento = new URLSearchParams(window.location.search).get('id');
-        const valor = evento.valor;
+        setCurrentUser(usuario); // Atualiza o estado caso tenha acabado de logar
 
-        if (valor === 0) {
-            // ── alert → toastSuccess ─────────────────────────────────────────
+        if (evento.valor === 0) {
             toastSuccess("Este evento é gratuito! Inscrição confirmada.");
             return;
         }
 
-        // Bloqueia o botão e mostra o loading
-        setIsProcessing(true);
-
-        try {
-            // 2. Chama a API do servidor (Mercado Pago)
-            const resposta = await fetch('/api/comprar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id_evento: idEvento,
-                    id_usuario: usuario.id,
-                    email_cliente: usuario.email,
-                    metodo: metodoPagamento,
-                    valor: valor
-                })
-            });
-
-            const dados = await resposta.json();
-
-            // 3. Atualiza a tela com o QR Code se for PIX
-            if (dados.sucesso && metodoPagamento === 'pix') {
-                setPixData({
-                    base64: dados.qr_code_base64,
-                    copiaCola: dados.qr_code_copia_cola
-                });
-            } else {
-                // ── alert → toastError ───────────────────────────────────────
-                toastError("Aviso: " + dados.mensagem);
-                setIsProcessing(false);
-            }
-
-        } catch (error) {
-            console.error(error);
-            // ── alert → toastError ───────────────────────────────────────────
-            toastError("Erro ao conectar com o sistema de pagamento.");
-            setIsProcessing(false);
-        }
+        // 2. Abre o Modal Seguro do Stripe
+        setIsCheckoutOpen(true);
     };
 
     // ==========================================
@@ -133,11 +95,9 @@ const EventoDetalhes = () => {
     // ==========================================
     return (
         <>
-            {/* ── UiHost renderiza toasts flutuantes ── */}
             <UiHost />
 
             <div className="site-background-gradient"></div>
-
 
             <main>
                 <section className="event-page-container">
@@ -212,93 +172,15 @@ const EventoDetalhes = () => {
                                         </div>
                                         <p className="checkout-subtitle">Lote 1 - Ingresso Profissional</p>
 
-                                        {!pixData && (
-                                            <div className="payment-tabs">
-                                                <button className={`payment-tab ${metodoPagamento === 'pix' ? 'active' : ''}`} onClick={() => openPayment('pix')}><i className="fab fa-pix"></i> PIX</button>
-                                                <button className={`payment-tab ${metodoPagamento === 'cartao' ? 'active' : ''}`} onClick={() => openPayment('cartao')}><i className="far fa-credit-card"></i> Cartão</button>
-                                                <button className={`payment-tab ${metodoPagamento === 'boleto' ? 'active' : ''}`} onClick={() => openPayment('boleto')}><i className="fas fa-barcode"></i> Boleto</button>
-                                            </div>
-                                        )}
+                                        {/* NOVO: Botão unificado que chama o Modal Seguro do Stripe */}
+                                        <button 
+                                            className="btn-search btn-checkout-final" 
+                                            onClick={iniciarCompra}
+                                        >
+                                            Adquirir Ingresso <i className="fas fa-lock" style={{ marginLeft: '8px' }}></i>
+                                        </button>
 
-                                        {/* EXIBIÇÃO DE PIX ANTES DO PAGAMENTO */}
-                                        {metodoPagamento === 'pix' && !pixData && (
-                                            <div className="payment-content">
-                                                <div className="pix-area">
-                                                    <i className="fas fa-qrcode" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
-                                                    <p>O QR Code será gerado após clicar em Finalizar.</p>
-                                                    <p style={{ fontSize: '0.8rem', color: '#666' }}>Aprovação imediata.</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* EXIBIÇÃO DE PIX APÓS O PAGAMENTO (GERADO PELA API) */}
-                                        {metodoPagamento === 'pix' && pixData && (
-                                            <div className="payment-content">
-                                                <div className="pix-area">
-                                                    <h4 style={{ color: 'var(--theme-teal-main)', marginBottom: '10px' }}>Pagamento Gerado!</h4>
-                                                    <img src={`data:image/jpeg;base64,${pixData.base64}`} alt="QR Code PIX" style={{ width: '200px', height: '200px', borderRadius: '10px', border: '1px solid #ccc' }} />
-                                                    <p style={{ fontSize: '0.85rem', marginTop: '10px', color: '#666' }}>Ou use o código Copia e Cola:</p>
-                                                    {/* ── alert → toastSuccess ao copiar ─────────────────────────── */}
-                                                    <input type="text" value={pixData.copiaCola} className="search-input" style={{ fontSize: '0.8rem', textAlign: 'center', marginTop: '5px' }} readOnly onClick={(e) => { e.target.select(); navigator.clipboard.writeText(e.target.value); toastSuccess('Código copiado!'); }} />
-                                                    <p style={{ fontSize: '0.8rem', color: 'var(--theme-terracotta)', marginTop: '15px', fontWeight: 600 }}>Aguardando pagamento...</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* CARTÃO E BOLETO */}
-                                        {metodoPagamento === 'cartao' && !pixData && (
-                                            <div className="payment-content">
-                                                <div className="checkout-form">
-                                                    <div className="input-group-search" style={{ marginBottom: '15px' }}>
-                                                        <label>Número do Cartão</label>
-                                                        <input type="text" placeholder="0000 0000 0000 0000" className="search-input" />
-                                                    </div>
-                                                    <div className="input-group-search" style={{ marginBottom: '15px' }}>
-                                                        <label>Nome no Cartão</label>
-                                                        <input type="text" placeholder="Nome impresso" className="search-input" />
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                                                        <div className="input-group-search" style={{ flex: 1 }}>
-                                                            <label>Validade</label>
-                                                            <input type="text" placeholder="MM/AA" className="search-input" />
-                                                        </div>
-                                                        <div className="input-group-search" style={{ flex: 1 }}>
-                                                            <label>CVV</label>
-                                                            <input type="text" placeholder="123" className="search-input" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="input-group-search">
-                                                        <label>Parcelamento</label>
-                                                        <select className="filter-select">
-                                                            <option>1x de R$ {evento.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} sem juros</option>
-                                                            <option>2x de R$ {(evento.valor / 2).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} sem juros</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {metodoPagamento === 'boleto' && !pixData && (
-                                            <div className="payment-content">
-                                                <div className="boleto-area">
-                                                    <i className="fas fa-file-invoice-dollar" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
-                                                    <p>O boleto será enviado para o seu e-mail.</p>
-                                                    <p style={{ fontSize: '0.8rem', color: '#666' }}>Pode levar até 3 dias úteis para compensar.</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Botão esconde ao gerar o PIX */}
-                                        {!pixData && (
-                                            <button 
-                                                className="btn-search btn-checkout-final" 
-                                                onClick={processarPagamento}
-                                                disabled={isProcessing}
-                                            >
-                                                {isProcessing ? <><i className="fas fa-spinner fa-spin"></i> Processando...</> : <>Finalizar Compra <i className="fas fa-lock" style={{ marginLeft: '8px' }}></i></>}
-                                            </button>
-                                        )}
-                                        <p className="secure-text"><i className="fas fa-shield-alt"></i> Ambiente 100% Seguro</p>
+                                        <p className="secure-text" style={{ marginTop: '15px' }}><i className="fas fa-shield-alt"></i> Ambiente 100% Seguro</p>
                                     </div>
                                 </div>
                             </div>
@@ -306,6 +188,19 @@ const EventoDetalhes = () => {
                     )}
                 </section>
             </main>
+
+            {/* ── MODAL DO STRIPE (SÓ RENDERIZA SE LOGADO E EVENTO CARREGADO) ── */}
+            {evento && currentUser && (
+                <CheckoutModal 
+                    isOpen={isCheckoutOpen}
+                    onClose={() => setIsCheckoutOpen(false)}
+                    valor={evento.valor}
+                    descricao={`Ingresso para: ${evento.titulo}`}
+                    id_evento={evento.id}
+                    id_usuario={currentUser.id}
+                    email_cliente={currentUser.email}
+                />
+            )}
 
             {/* MODAIS AQUI PARA NÃO QUEBRAR O FLUXO DE LOGIN NA HORA DA COMPRA */}
             {isLoginOpen && (
