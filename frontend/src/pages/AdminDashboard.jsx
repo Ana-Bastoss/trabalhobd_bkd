@@ -20,6 +20,7 @@ const AdminDashboard = () => {
     const [prestadoresGlobais, setPrestadoresGlobais] = useState([]);
     const [servicosGlobais,    setServicosGlobais]    = useState([]);
     const [eventosGlobais,     setEventosGlobais]     = useState([]);
+    const [clientesGlobais,    setClientesGlobais]    = useState([]); // NOVO: Estado de Clientes
 
     // ==========================================
     // ESTADOS DE FILTROS
@@ -35,6 +36,7 @@ const AdminDashboard = () => {
     const [filtroParceiroEvento,    setFiltroParceiroEvento]    = useState('Todos');
     const [filtroDataInicio,        setFiltroDataInicio]        = useState('');
     const [filtroDataFim,           setFiltroDataFim]           = useState('');
+    const [filtroBuscaCliente,      setFiltroBuscaCliente]      = useState(''); // NOVO: Filtro Cliente
 
     // ==========================================
     // ESTADOS DE FORMULÁRIOS (CRUD)
@@ -45,11 +47,9 @@ const AdminDashboard = () => {
     const [formPrestador, setFormPrestador] = useState({
         id: '', nome: '', segmento: '', email: '', telefone: '', descricao: '', plano: 'Básico', status: 'Ativo'
     });
-    // NOVO: Adicionado status inicial 'Ativo' no formServico
     const [formServico, setFormServico] = useState({
         id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', id_prestador: '', destaque: false, imagem: null, status: 'Ativo'
     });
-    // NOVO: Adicionado status inicial 'Ativo' no formEvento
     const [formEvento, setFormEvento] = useState({
         id: '', imagem: null, parceiro: 'WE Corp Oficial', heads: '', titulo: '',
         categoria: 'Startups e Inovação', valor: '', data: '', horario: '',
@@ -57,10 +57,16 @@ const AdminDashboard = () => {
     });
     const [certificacaoInclusa, setCertificacaoInclusa] = useState('nao');
 
+    // NOVO: Estado para formulário de Clientes
+    const [formCliente, setFormCliente] = useState({
+        id: '', nome: '', email: '', cpf: '', senha: '', status: 'Ativo'
+    });
+
     // Itens selecionados para modais de visualização
     const [parceiroSelecionado, setParceiroSelecionado] = useState(null);
     const [servicoSelecionado,  setServicoSelecionado]  = useState(null);
     const [eventoSelecionado,   setEventoSelecionado]   = useState(null);
+    const [clienteSelecionado,  setClienteSelecionado]  = useState(null); // NOVO
 
     // ==========================================
     // FUNÇÕES DE MODAL
@@ -71,6 +77,7 @@ const AdminDashboard = () => {
         setParceiroSelecionado(null);
         setServicoSelecionado(null);
         setEventoSelecionado(null);
+        setClienteSelecionado(null);
     };
 
     const toggleSubmenu = (menuName) => {
@@ -105,6 +112,7 @@ const AdminDashboard = () => {
                 carregarListaParceiros();
                 carregarListaPrestadores();
                 carregarListaServicos();
+                carregarListaClientes(); // NOVO
             }
         } else {
             window.location.href = '/';
@@ -145,6 +153,14 @@ const AdminDashboard = () => {
             const d = await r.json();
             if (d.sucesso) setServicosGlobais(d.servicos);
         } catch (e) { console.error("Erro ao carregar serviços:", e); }
+    };
+
+    const carregarListaClientes = async () => {
+        try {
+            const r = await fetch('/api/clientes'); // Presumindo rota para buscar usuarios com tipo=cliente
+            const d = await r.json();
+            if (d.sucesso) setClientesGlobais(d.clientes);
+        } catch (e) { console.error("Erro ao carregar clientes:", e); }
     };
 
     // ==========================================
@@ -194,9 +210,13 @@ const AdminDashboard = () => {
         return matchNome && matchStatus && matchParceiro && matchData;
     });
 
-    // ==========================================
-    // HELPER: estrelas de avaliação
-    // ==========================================
+    const clientesFiltrados = clientesGlobais.filter(c => {
+        const busca = filtroBuscaCliente.toLowerCase();
+        return c.nome.toLowerCase().includes(busca) ||
+               c.email.toLowerCase().includes(busca) ||
+               (c.cpf && c.cpf.includes(busca));
+    });
+
     const renderEstrelas = (avaliacao) => {
         const estrelas = [];
         for (let i = 1; i <= 5; i++) {
@@ -324,7 +344,6 @@ const AdminDashboard = () => {
         const s  = servicosGlobais.find(x => x.id === id);
         if (!s) return;
         const pr = prestadoresGlobais.find(p => p.nome === s.nome_prestador);
-        // NOVO: resgatar status no modal de edição
         setFormServico({ id: s.id, titulo: s.titulo, categoria: s.categoria || 'Tecnologia', valor: s.valor || '', descricao: s.descricao || '', id_prestador: pr ? String(pr.id) : '', destaque: s.destaque == 1, imagem: null, status: s.status || 'Ativo' });
         openModal('modalAdminNovoServico');
     };
@@ -350,7 +369,7 @@ const AdminDashboard = () => {
         fd.append('id_prestador',   formServico.id_prestador || '');
         fd.append('nome_prestador', pr ? pr.nome : '');
         fd.append('destaque',       formServico.destaque ? 1 : 0);
-        fd.append('status',         formServico.status); // NOVO: envia o status no formData
+        fd.append('status',         formServico.status);
         fd.append('tipoCriador',    user.tipo);
         if (formServico.imagem) fd.append('imagem', formServico.imagem);
         
@@ -414,7 +433,6 @@ const AdminDashboard = () => {
             const d = await r.json();
             if (d.sucesso) {
                 const e = d.evento;
-                // NOVO: resgatar status no modal de edição
                 setFormEvento({ id: e.id, imagem: null, parceiro: e.parceiro || 'WE Corp Oficial', heads: e.heads || '', titulo: e.titulo || '', categoria: e.categoria || 'Startups e Inovação', valor: e.valor || '', data: e.data_evento || '', horario: e.horario || '', local: e.local || '', descricao: e.descricao || '', conteudo: e.conteudo || '', certificacao: e.certificacao_inclusa || 'nao', textocert: e.texto_certificacao || '', status: e.status || 'Ativo' });
                 setCertificacaoInclusa(e.certificacao_inclusa || 'nao');
                 openModal('modalAdminNovoEvento');
@@ -447,7 +465,7 @@ const AdminDashboard = () => {
         fd.append('conteudo',            formEvento.conteudo);
         fd.append('certificacao_inclusa',formEvento.certificacao);
         fd.append('texto_certificacao',  formEvento.textocert);
-        fd.append('status',              formEvento.status); // NOVO: envia o status no formData
+        fd.append('status',              formEvento.status);
         fd.append('tipoCriador',         user.tipo);
         if (formEvento.imagem) fd.append('imagem', formEvento.imagem);
         
@@ -494,6 +512,100 @@ const AdminDashboard = () => {
             if (d.sucesso) { toastSuccess(d.mensagem); carregarTabelasEventos(); }
             else toastError('Erro: ' + d.mensagem);
         } catch (e) { toastError('Erro de conexão.'); }
+    };
+
+    // ==========================================
+    // CLIENTES - CRUD (TABELA REAL)
+    // ==========================================
+    const abrirNovoCliente = () => {
+        setFormCliente({ id: '', nome: '', email: '', cpf: '', senha: '', status: 'Ativo' });
+        openModal('modalCadastroCliente');
+    };
+
+    const abrirEdicaoCliente = (id) => {
+        const c = clientesGlobais.find(x => x.id === id);
+        if (!c) return;
+        setFormCliente({
+            id: c.id,
+            nome: c.nome,
+            email: c.email,
+            cpf: c.cpf || '',
+            senha: '', // Mantemos em branco por segurança, preenche só se for alterar
+            status: c.status || 'Ativo'
+        });
+        openModal('modalCadastroCliente');
+    };
+
+    const abrirPerfilCliente = (id) => {
+        const c = clientesGlobais.find(x => x.id === id);
+        if (!c) return;
+        setClienteSelecionado(c);
+        openModal('modalClientePerfil');
+    };
+
+    const abrirHistoricoCliente = (id) => {
+        const c = clientesGlobais.find(x => x.id === id);
+        if (!c) return;
+        setClienteSelecionado(c);
+        openModal('modalClienteHistorico');
+    };
+
+    const salvarCliente = async () => {
+        if (!formCliente.nome || !formCliente.email) {
+            toastError('Nome e E-mail são obrigatórios!');
+            return;
+        }
+
+        const dados = {
+            nome: formCliente.nome,
+            email: formCliente.email,
+            cpf: formCliente.cpf,
+            status: formCliente.status,
+            tipo: 'cliente'
+        };
+
+        if (formCliente.senha) dados.senha = formCliente.senha;
+
+        const url    = formCliente.id ? `/api/clientes/${formCliente.id}` : '/api/clientes';
+        const method = formCliente.id ? 'PUT' : 'POST';
+
+        try {
+            const r = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+            const d = await r.json();
+            if (d.sucesso) {
+                toastSuccess(d.mensagem);
+                closeModals();
+                carregarListaClientes();
+            } else {
+                toastError('Erro: ' + d.mensagem);
+            }
+        } catch (e) { toastError('Erro de conexão com o servidor.'); }
+    };
+
+    const excluirCliente = async (id, nome) => {
+        const ok = await confirmDialog({
+            title: 'Excluir cliente',
+            message: `Tem certeza que deseja excluir o cliente "${nome}"? Esta ação não pode ser desfeita.`,
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            danger: true,
+            icon: 'fa-trash'
+        });
+        if (!ok) return;
+        try {
+            const r = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+            const d = await r.json();
+            if (d.sucesso) {
+                toastSuccess(d.mensagem);
+                carregarListaClientes();
+            } else {
+                toastError('Erro: ' + d.mensagem);
+            }
+        } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
 
     // ==========================================
@@ -582,10 +694,8 @@ const AdminDashboard = () => {
     // ==========================================
     return (
         <div className="admin-body">
-            {/* ── UiHost renderiza toasts e confirm dialog flutuantes ── */}
             <UiHost />
 
-            {/* HEADER */}
             <header className="navbar-direct admin-header">
                 <div className="navbar-content" style={{ maxWidth: '100%', padding: '10px 30px' }}>
                     <div className="logo">
@@ -601,7 +711,6 @@ const AdminDashboard = () => {
             </header>
 
             <div className="dashboard-container">
-                {/* SIDEBAR */}
                 <aside className="admin-sidebar">
                     <div className="admin-profile">
                         <i className="fas fa-user-shield"></i>
@@ -871,20 +980,38 @@ const AdminDashboard = () => {
                     <section className={`admin-tab-content ${activeTab === 'clientes' ? 'active' : ''}`}>
                         <div className="tab-header">
                             <h2>Gestão de Clientes</h2>
-                            <button className="btn-search" onClick={() => openModal('modalNovoCliente')}><i className="fas fa-plus"></i> Novo Cliente</button>
+                            <button className="btn-search" onClick={abrirNovoCliente}><i className="fas fa-plus"></i> Novo Cliente</button>
                         </div>
+                        
+                        {/* NOVO: Filtro e busca de Clientes */}
+                        <div className="search-wrapper" style={{ padding: '20px', marginBottom: '25px', background: '#fff', borderRadius: '10px', border: '1px solid #eaeaea' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '20px', alignItems: 'end' }}>
+                                <div className="input-group-search">
+                                    <label>Pesquisar Cliente</label>
+                                    <input type="text" className="search-input" placeholder="Nome, e-mail ou CPF..." value={filtroBuscaCliente} onChange={e => setFiltroBuscaCliente(e.target.value)} />
+                                </div>
+                                <button className="btn-search" style={{ height: '45px' }}><i className="fas fa-search"></i> Buscar</button>
+                            </div>
+                        </div>
+
                         <table className="admin-table">
                             <thead><tr><th>Nome do Cliente</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead>
                             <tbody>
-                                <tr>
-                                    <td><strong>Ana Beatriz</strong></td>
-                                    <td>anabastos.redes@gmail.com</td>
-                                    <td><span className="status-tag active">Ativo</span></td>
-                                    <td className="action-buttons">
-                                        <button className="btn-icon btn-view" onClick={() => openModal('modalClientePerfil')}><i className="fas fa-user"></i> Ver Perfil</button>
-                                        <button className="btn-icon btn-view" onClick={() => openModal('modalClienteHistorico')}><i className="fas fa-ticket-alt"></i> Histórico</button>
-                                    </td>
-                                </tr>
+                                {clientesFiltrados.length === 0 ? (
+                                    <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum cliente encontrado.</td></tr>
+                                ) : clientesFiltrados.map(c => (
+                                    <tr key={c.id}>
+                                        <td><strong>{c.nome}</strong>{c.cpf && <><br /><small style={{ color: '#888' }}>CPF: {c.cpf}</small></>}</td>
+                                        <td>{c.email}</td>
+                                        <td>{c.status === 'Ativo' ? <span className="status-tag active">Ativo</span> : <span className="status-tag pending">Inativo</span>}</td>
+                                        <td className="action-buttons">
+                                            <button className="btn-icon btn-view" onClick={() => abrirPerfilCliente(c.id)}><i className="fas fa-user"></i> Ver Perfil</button>
+                                            <button className="btn-icon btn-view" onClick={() => abrirHistoricoCliente(c.id)}><i className="fas fa-ticket-alt"></i> Histórico</button>
+                                            <button className="btn-icon btn-edit" onClick={() => abrirEdicaoCliente(c.id)}><i className="fas fa-edit"></i> Editar</button>
+                                            <button className="btn-icon btn-delete" onClick={() => excluirCliente(c.id, c.nome)}><i className="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </section>
@@ -1024,12 +1151,12 @@ const AdminDashboard = () => {
                                     </select>
                                 </div>
                                 <div className="input-group-search" style={{ flex: 1 }}><label>Valor (R$)</label><input type="number" className="search-input" value={formServico.valor} onChange={e => setFormServico(s => ({ ...s, valor: e.target.value }))} /></div>
-                                {/* ── NOVO CAMPO: STATUS NA EDIÇÃO DE SERVIÇO ── */}
                                 <div className="input-group-search" style={{ flex: 1 }}>
                                     <label>Status</label>
                                     <select className="filter-select" value={formServico.status} onChange={e => setFormServico(s => ({ ...s, status: e.target.value }))}>
                                         <option value="Ativo">Ativo</option>
                                         <option value="Inativo">Inativo</option>
+                                        <option value="Pendente">Pendente</option>
                                         <option value="Recusado">Recusado</option>
                                     </select>
                                 </div>
@@ -1081,12 +1208,12 @@ const AdminDashboard = () => {
                                     </select>
                                 </div>
                                 <div className="input-group-search" style={{ flex: 1 }}><label>Valor (R$)</label><input type="number" className="search-input" value={formEvento.valor} onChange={e => setFormEvento(f => ({ ...f, valor: e.target.value }))} /></div>
-                                {/* ── NOVO CAMPO: STATUS NA EDIÇÃO DE EVENTO ── */}
                                 <div className="input-group-search" style={{ flex: 1 }}>
                                     <label>Status</label>
                                     <select className="filter-select" value={formEvento.status} onChange={e => setFormEvento(f => ({ ...f, status: e.target.value }))}>
                                         <option value="Ativo">Ativo</option>
                                         <option value="Inativo">Inativo</option>
+                                        <option value="Pendente">Pendente</option>
                                         <option value="Recusado">Recusado</option>
                                     </select>
                                 </div>
@@ -1257,34 +1384,62 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-            {/* Novo Cliente */}
-            {activeModal === 'modalNovoCliente' && (
+            {/* Cadastro / Edição de Cliente */}
+            {activeModal === 'modalCadastroCliente' && (
                 <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
                     <div className="admin-profile-modal" style={{ maxWidth: '500px' }}>
                         <button className="close-modal" onClick={closeModals}><i className="fas fa-times"></i></button>
-                        <div className="modal-header-profile"><h2>Cadastrar Novo Cliente</h2></div>
+                        <div className="modal-header-profile">
+                            <h2>{formCliente.id ? `Editar: ${formCliente.nome}` : 'Cadastrar Novo Cliente'}</h2>
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div className="input-group-search"><label>Nome Completo</label><input type="text" className="search-input" /></div>
-                            <div className="input-group-search"><label>E-mail</label><input type="email" className="search-input" /></div>
-                            <div className="input-group-search"><label>CPF</label><input type="text" className="search-input" /></div>
-                            <button type="button" className="btn-search btn-block" onClick={() => { toastError('Funcionalidade será integrada futuramente!'); closeModals(); }}><i className="fas fa-check"></i> Cadastrar</button>
+                            <div className="input-group-search">
+                                <label>Nome Completo <span style={{ color: 'red' }}>*</span></label>
+                                <input type="text" className="search-input" placeholder="Nome do cliente" value={formCliente.nome} onChange={e => setFormCliente({...formCliente, nome: e.target.value})} />
+                            </div>
+                            <div className="input-group-search">
+                                <label>E-mail <span style={{ color: 'red' }}>*</span></label>
+                                <input type="email" className="search-input" placeholder="email@cliente.com" value={formCliente.email} onChange={e => setFormCliente({...formCliente, email: e.target.value})} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div className="input-group-search" style={{ flex: 1 }}>
+                                    <label>CPF</label>
+                                    <input type="text" className="search-input" placeholder="000.000.000-00" value={formCliente.cpf} onChange={e => setFormCliente({...formCliente, cpf: e.target.value})} />
+                                </div>
+                                <div className="input-group-search" style={{ flex: 1 }}>
+                                    <label>Status</label>
+                                    <select className="filter-select" value={formCliente.status} onChange={e => setFormCliente({...formCliente, status: e.target.value})}>
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Inativo">Inativo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="input-group-search">
+                                <label>Nova Senha {formCliente.id && <span style={{ fontSize: '0.8rem', color: '#888' }}>(Deixe em branco para manter)</span>}</label>
+                                <input type="password" className="search-input" placeholder="***" value={formCliente.senha} onChange={e => setFormCliente({...formCliente, senha: e.target.value})} />
+                            </div>
+                            
+                            <button type="button" className="btn-search btn-block" onClick={salvarCliente}>
+                                <i className="fas fa-check"></i> {formCliente.id ? 'Salvar Alterações' : 'Cadastrar'}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
             {/* Perfil do Cliente */}
-            {activeModal === 'modalClientePerfil' && (
+            {activeModal === 'modalClientePerfil' && clienteSelecionado && (
                 <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
                     <div className="admin-profile-modal" style={{ maxWidth: '500px' }}>
                         <button className="close-modal" onClick={closeModals}><i className="fas fa-times"></i></button>
-                        <div className="modal-header-profile"><h2>Perfil do Cliente <span className="status-tag active" style={{ fontSize: '0.8rem' }}>Ativa</span></h2></div>
+                        <div className="modal-header-profile">
+                            <h2>Perfil do Cliente <span className={`status-tag ${clienteSelecionado.status === 'Ativo' ? 'active' : 'pending'}`} style={{ fontSize: '0.8rem' }}>{clienteSelecionado.status || 'Ativo'}</span></h2>
+                        </div>
                         <div className="detail-list" style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px' }}>
                             <ul style={{ listStyle: 'none', padding: 0, fontSize: '0.95rem', lineHeight: 2 }}>
-                                <li><strong>Nome:</strong> Ana Beatriz Gonçalves Bastos</li>
-                                <li><strong>E-mail:</strong> anabastos.redes@gmail.com</li>
-                                <li><strong>CPF:</strong> 000.000.000-00</li>
-                                <li><strong>Telefone:</strong> (61) 90000-0000</li>
+                                <li><strong>Nome:</strong> {clienteSelecionado.nome}</li>
+                                <li><strong>E-mail:</strong> {clienteSelecionado.email}</li>
+                                <li><strong>CPF:</strong> {clienteSelecionado.cpf || 'Não informado'}</li>
                             </ul>
                         </div>
                     </div>
@@ -1292,13 +1447,14 @@ const AdminDashboard = () => {
             )}
 
             {/* Histórico do Cliente */}
-            {activeModal === 'modalClienteHistorico' && (
+            {activeModal === 'modalClienteHistorico' && clienteSelecionado && (
                 <div className="modal-overlay active" onClick={e => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
                     <div className="admin-profile-modal">
                         <button className="close-modal" onClick={closeModals}><i className="fas fa-times"></i></button>
-                        <div className="modal-header-profile"><h2>Histórico de Compras</h2><p>Cliente: <strong>Ana Beatriz</strong></p></div>
+                        <div className="modal-header-profile"><h2>Histórico de Compras</h2><p>Cliente: <strong>{clienteSelecionado.nome}</strong></p></div>
                         <div className="detail-list">
                             <ul className="purchase-history">
+                                {/* Histórico ainda é estático, aguardando tabela real de compras/inscrições */}
                                 <li><div><strong>Treinamento: Certificação Cisco CCNA</strong><p style={{ fontSize: '0.85rem', color: '#666' }}>10/04/2026 | PIX</p></div><span className="pay-tag tag-approved">🟢 Aprovado</span></li>
                                 <li><div><strong>Consultoria em Cibersegurança</strong><p style={{ fontSize: '0.85rem', color: '#666' }}>01/05/2026 | Boleto</p></div><span className="pay-tag tag-pending">🟡 Aguardando</span></li>
                             </ul>

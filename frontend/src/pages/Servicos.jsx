@@ -180,29 +180,6 @@ const Servicos = () => {
                 </section>
             </main>
 
-            <footer>
-                <div className="footer-content">
-                    <div className="footer-brand">
-                        <img src="/logo.png" alt="WE CORP Logo" className="footer-logo" />
-                        <p>We empower your enterprise</p>
-                    </div>
-                    <div className="footer-links">
-                        <h4>Navegação</h4>
-                        <a href="/#eventos">Eventos</a>
-                        <a href="/servicos">Serviços</a>
-                        <a href="/#sobre">Sobre nós</a>
-                    </div>
-                    <div className="footer-social">
-                        <h4>Redes Sociais</h4>
-                        <div className="social-icons">
-                            <a href="#"><i className="fab fa-linkedin"></i> LinkedIn</a>
-                            <a href="#"><i className="fab fa-instagram"></i> Instagram</a>
-                            <a href="#"><i className="fab fa-youtube"></i> YouTube</a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-
             {/* =========================================
                 MODAIS (Detalhes, Login e Cadastro)
             ========================================= */}
