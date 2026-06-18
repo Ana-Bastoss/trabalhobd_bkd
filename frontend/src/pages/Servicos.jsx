@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
+// ── Única adição: importar os helpers de UI ──────────────────────────────────
+import { toastSuccess } from '../lib/ui';
+import UiHost from '../components/Ui';
+// ────────────────────────────────────────────────────────────────────────────
 
 const Servicos = () => {
     const [servicosGlobais, setServicosGlobais] = useState([]);
@@ -68,6 +72,9 @@ const Servicos = () => {
 
     return (
         <>
+            {/* ── UiHost renderiza toasts flutuantes ── */}
+            <UiHost />
+
             <div className="site-background-gradient"></div>
 
             <main>
@@ -247,7 +254,8 @@ const Servicos = () => {
                                             <i className="far fa-star"></i><i className="far fa-star"></i><i className="far fa-star"></i><i className="far fa-star"></i><i className="far fa-star"></i>
                                         </div>
                                         <textarea className="search-input" rows="3" placeholder="Conte-nos como foi sua experiência com este serviço..." style={{ marginBottom: '10px', resize: 'none' }}></textarea>
-                                        <button className="btn-search" style={{ padding: '8px 20px', fontSize: '0.9rem' }} onClick={() => alert('Obrigado! Sua avaliação foi enviada para publicação.')}>Publicar Avaliação</button>
+                                        {/* ── alert → toastSuccess ──────────────────────────────────── */}
+                                        <button className="btn-search" style={{ padding: '8px 20px', fontSize: '0.9rem' }} onClick={() => toastSuccess('Obrigado! Sua avaliação foi enviada para publicação.')}>Publicar Avaliação</button>
                                     </div>
                                 </div>
                             </div>
@@ -274,7 +282,8 @@ const Servicos = () => {
                                             <label style={{ fontSize: '0.8rem', color: '#555' }}>Sua necessidade (Opcional)</label>
                                             <textarea className="search-input" rows="2" style={{ resize: 'none' }} placeholder="Do que você precisa?"></textarea>
                                         </div>
-                                        <button type="button" className="btn-search" style={{ width: '100%', height: '50px', marginTop: '10px' }} onClick={() => alert('Orçamento solicitado! A empresa entrará em contato em breve.')}>
+                                        {/* ── alert → toastSuccess ──────────────────────────────────── */}
+                                        <button type="button" className="btn-search" style={{ width: '100%', height: '50px', marginTop: '10px' }} onClick={() => toastSuccess('Orçamento solicitado! A empresa entrará em contato em breve.')}>
                                             <i className="fas fa-paper-plane" style={{ marginRight: '5px' }}></i> Enviar Solicitação
                                         </button>
                                     </form>

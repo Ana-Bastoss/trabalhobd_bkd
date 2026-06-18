@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
+// ── Única adição: importar os helpers de UI ──────────────────────────────────
+import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
+import UiHost from '../components/Ui';
+// ────────────────────────────────────────────────────────────────────────────
 
 const PrestadorDashboard = () => {
     // ── Sessão ──
@@ -80,7 +84,8 @@ const PrestadorDashboard = () => {
     // NOVA POSTAGEM — envia para a API
     // ==========================================
     const salvarServico = async () => {
-        if (!formServico.titulo) { alert('O título do serviço é obrigatório.'); return; }
+        // ── alert → toastError ───────────────────────────────────────────────
+        if (!formServico.titulo) { toastError('O título do serviço é obrigatório.'); return; }
 
         const fd = new FormData();
         fd.append('titulo',         formServico.titulo);
@@ -99,14 +104,17 @@ const PrestadorDashboard = () => {
             const resposta = await fetch(url, { method, body: fd });
             const dados    = await resposta.json();
             if (dados.sucesso) {
-                alert(formServico.id ? 'Serviço atualizado com sucesso!' : 'Serviço enviado para aprovação da WE Corp!');
+                // ── alert → toastSuccess ─────────────────────────────────────
+                toastSuccess(formServico.id ? 'Serviço atualizado com sucesso!' : 'Serviço enviado para aprovação da WE Corp!');
                 closeModals();
                 carregarServicos(user);
             } else {
-                alert('Erro: ' + dados.mensagem);
+                // ── alert → toastError ───────────────────────────────────────
+                toastError('Erro: ' + dados.mensagem);
             }
         } catch (e) {
-            alert('Erro de conexão com o servidor.');
+            // ── alert → toastError ───────────────────────────────────────────
+            toastError('Erro de conexão com o servidor.');
         }
     };
 
@@ -135,18 +143,29 @@ const PrestadorDashboard = () => {
         openModal('novoServico');
     };
 
-    const handleLogout = () => {
-        if (window.confirm("Deseja sair da sua conta?")) {
+    // ── window.confirm → confirmDialog ──────────────────────────────────────
+    const handleLogout = async () => {
+        const ok = await confirmDialog({
+            title: 'Encerrar sessão',
+            message: 'Deseja sair da sua conta?',
+            confirmLabel: 'Sair',
+            cancelLabel: 'Continuar'
+        });
+        if (ok) {
             localStorage.removeItem("usuarioLogado");
             window.location.href = '/';
         }
     };
+    // ────────────────────────────────────────────────────────────────────────
 
     // ==========================================
     // RENDER
     // ==========================================
     return (
         <div className="admin-body">
+            {/* ── UiHost renderiza toasts e confirm dialog flutuantes ── */}
+            <UiHost />
+
             {/* HEADER */}
             <header className="navbar-direct admin-header">
                 <div className="navbar-content" style={{ maxWidth: '100%', padding: '10px 30px' }}>
@@ -327,7 +346,8 @@ const PrestadorDashboard = () => {
                                     <i className="fas fa-qrcode" style={{ fontSize: '3rem', color: 'var(--theme-teal-main)', marginBottom: '10px' }}></i>
                                     <p>Gerar QR Code Copia e Cola.</p>
                                 </div>
-                                <button className="btn-search btn-checkout-final btn-block" style={{ marginTop: '20px' }} onClick={() => alert('Integração com Mercado Pago ativa. Use o botão no ambiente real.')}>
+                                {/* ── alert → toastInfo ───────────────────────────────────── */}
+                                <button className="btn-search btn-checkout-final btn-block" style={{ marginTop: '20px' }} onClick={() => toastInfo('Integração com Mercado Pago ativa. Use o botão no ambiente real.')}>
                                     Pagar Mensalidade <i className="fas fa-lock" style={{ marginLeft: '8px' }}></i>
                                 </button>
                             </div>
@@ -458,7 +478,8 @@ const PrestadorDashboard = () => {
                                 <label>Mensagem para o Administrador</label>
                                 <textarea className="search-input" rows="4" style={{ resize: 'none' }} placeholder="Explique o que ocorreu..."></textarea>
                             </div>
-                            <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { alert('Requisição enviada ao administrador!'); closeModals(); }}>
+                            {/* ── alert → toastSuccess ────────────────────────────────────── */}
+                            <button type="button" className="btn-search btn-block" style={{ backgroundColor: 'var(--theme-terracotta)' }} onClick={() => { toastSuccess('Requisição enviada ao administrador!'); closeModals(); }}>
                                 <i className="fas fa-envelope"></i> Enviar Ticket
                             </button>
                         </div>
