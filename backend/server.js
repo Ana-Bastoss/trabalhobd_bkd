@@ -6,12 +6,20 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
 
-// NOVO: Importação do Stripe substituindo o Mercado Pago
+// ── Mercado Pago (PIX) ─────────────────────────────────────────────────────
+import { MercadoPagoConfig, Payment } from 'mercadopago';
+
+const mpClient = new MercadoPagoConfig({
+    accessToken: 'TEST-SEU-ACCESS-TOKEN-AQUI', // ← substitua pelo token real do MP
+    options: { timeout: 5000 }
+});
+
+// ── Stripe (Cartão + Boleto) ───────────────────────────────────────────────
 import Stripe from 'stripe';
 
-// Configuração do Stripe com sua chave secreta (usando uma chave de teste imaginária por enquanto)
-const stripe = new Stripe('sk_test_SUA_CHAVE_SECRETA_AQUI');
+const stripe = new Stripe('sk_test_51TjiOjKovEjRHOi6brX861Toeq3PooG0kVDX555dOXF83u5FCxx6XbCdCyvxLYXk6cZaVivYljseVzLr0HCdLd9000KqjxV2zC');
 
+// ──────────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -34,7 +42,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.use(express.json());
-// CORREÇÃO: serve os arquivos estáticos da própria pasta raiz do projeto
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadDir));
 
@@ -66,28 +73,15 @@ async function setupDatabase() {
         );
     `);
 
-    // --- CORREÇÃO: Adicionadas colunas cpf e status na tabela de usuários ---
     await db.exec(`
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
             senha TEXT NOT NULL,
-            tipo TEXT CHECK(tipo IN ('admin', 'patrocinador', 'parceiro', 'prestador', 'cliente')) NOT NULL,
-            cpf TEXT,
-            status TEXT DEFAULT 'Ativo'
+            tipo TEXT CHECK(tipo IN ('admin', 'patrocinador', 'parceiro', 'prestador', 'cliente')) NOT NULL
         );
     `);
-
-    // Bloco de segurança para adicionar colunas faltantes em bancos já existentes
-    try { await db.exec("ALTER TABLE usuarios ADD COLUMN cpf TEXT;"); } catch (e) { /* Coluna já existe */ }
-    try { await db.exec("ALTER TABLE usuarios ADD COLUMN status TEXT DEFAULT 'Ativo';"); } catch (e) { /* Coluna já existe */ }
-
-    // ── CORREÇÃO DO BUG DO PRESTADOR DASHBOARD ──
-    try { 
-        await db.run("UPDATE prestadores SET nome = 'TechSecurity' WHERE nome = 'TechSecurity Admin'"); 
-        await db.run("UPDATE servicos SET nome_prestador = 'TechSecurity' WHERE nome_prestador = 'TechSecurity Admin'");
-    } catch (e) {}
 
     await db.exec(`
         CREATE TABLE IF NOT EXISTS eventos (
@@ -122,7 +116,6 @@ async function setupDatabase() {
         );
     `);
 
-    // ---- Tabela de parceiros/patrocinadores ----
     await db.exec(`
         CREATE TABLE IF NOT EXISTS parceiros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,7 +131,6 @@ async function setupDatabase() {
         );
     `);
 
-    // ---- Tabela de prestadores de serviço ----
     await db.exec(`
         CREATE TABLE IF NOT EXISTS prestadores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,7 +147,6 @@ async function setupDatabase() {
         );
     `);
 
-    // ---- Tabela de postagens de serviços ----
     await db.exec(`
         CREATE TABLE IF NOT EXISTS servicos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,14 +171,14 @@ async function setupDatabase() {
     if (checkUser.count === 0) {
         await db.run("DELETE FROM usuarios");
         const usuariosParaInserir = [
-            ['Admin WE Corp', 'admin@wecorp.com', '123', 'admin', '', 'Ativo'],
-            ['Cisco Academy', 'patrocinador@cisco.com', '123', 'patrocinador', '', 'Ativo'],
-            ['SENAI', 'parceiro@senai.com', '123', 'parceiro', '', 'Ativo'],
-            ['TechSecurity', 'prestador@servico.com', '123', 'prestador', '', 'Ativo'],
-            ['Ana Beatriz Gonçalves Bastos', 'anabastos.redes@gmail.com', '123', 'cliente', '000.000.000-00', 'Ativo']
+            ['Admin WE Corp', 'admin@wecorp.com', '123', 'admin'],
+            ['Cisco Academy', 'patrocinador@cisco.com', '123', 'patrocinador'],
+            ['SENAI', 'parceiro@senai.com', '123', 'parceiro'],
+            ['TechSecurity', 'prestador@servico.com', '123', 'prestador'],
+            ['Ana Beatriz', 'cliente@email.com', '123', 'cliente']
         ];
         for (const user of usuariosParaInserir) {
-            await db.run('INSERT INTO usuarios (nome, email, senha, tipo, cpf, status) VALUES (?, ?, ?, ?, ?, ?)', user);
+            await db.run('INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)', user);
         }
         console.log('Usuários inseridos automaticamente!');
     }
@@ -225,7 +216,7 @@ async function setupDatabase() {
         const userTech = await db.get("SELECT id FROM usuarios WHERE email = 'prestador@servico.com'");
         await db.run(
             `INSERT INTO prestadores (nome, segmento, email, telefone, descricao, status, plano, avaliacao, id_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['TechSecurity', 'Tecnologia', 'contato@techsecurity.com', '(61) 99999-0001', 'Especialistas em segurança de redes e infraestrutura corporativa, com foco em proteção de dados e compliance LGPD.', 'Ativo', 'Profissional (Ouro)', 5.0, userTech ? userTech.id : null]
+            ['TechSecurity Admin', 'Tecnologia', 'contato@techsecurity.com', '(61) 99999-0001', 'Especialistas em segurança de redes e infraestrutura corporativa, com foco em proteção de dados e compliance LGPD.', 'Ativo', 'Profissional (Ouro)', 5.0, userTech ? userTech.id : null]
         );
         await db.run(
             `INSERT INTO prestadores (nome, segmento, email, telefone, descricao, status, plano, avaliacao, id_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -249,79 +240,108 @@ async function setupDatabase() {
     // ---- Seed de serviços/postagens ----
     const checkServico = await db.get("SELECT COUNT(*) as count FROM servicos");
     if (checkServico.count === 0) {
-        const prestTech   = await db.get("SELECT id FROM prestadores WHERE nome = 'TechSecurity'");
-        const prestBuild  = await db.get("SELECT id FROM prestadores WHERE nome = 'BuildTech Engenharia'");
-        const prestEduca  = await db.get("SELECT id FROM prestadores WHERE nome = 'EducaPro Corp'");
-        const prestCloud  = await db.get("SELECT id FROM prestadores WHERE nome = 'CloudSys IT'");
-        const prestNova   = await db.get("SELECT id FROM prestadores WHERE nome = 'NovaEng Soluções'");
+        const prestTech  = await db.get("SELECT id FROM prestadores WHERE nome = 'TechSecurity Admin'");
+        const prestBuild = await db.get("SELECT id FROM prestadores WHERE nome = 'BuildTech Engenharia'");
+        const prestEduca = await db.get("SELECT id FROM prestadores WHERE nome = 'EducaPro Corp'");
+        const prestCloud = await db.get("SELECT id FROM prestadores WHERE nome = 'CloudSys IT'");
+        const prestNova  = await db.get("SELECT id FROM prestadores WHERE nome = 'NovaEng Soluções'");
 
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['Consultoria em Cibersegurança e Redes', 'Tecnologia',
-             'Análise de vulnerabilidades, configuração de firewalls e reestruturação de redes corporativas com foco em proteção de dados e compliance com a LGPD.',
-             2500.00, 'Ativo', 5.0, 12, 1, null, prestTech ? prestTech.id : null, 'TechSecurity']
+            ['Consultoria em Cibersegurança e Redes', 'Tecnologia', 'Análise de vulnerabilidades, configuração de firewalls e reestruturação de redes corporativas com foco em proteção de dados e compliance com a LGPD.', 2500.00, 'Ativo', 5.0, 12, 1, null, prestTech ? prestTech.id : null, 'TechSecurity Admin']
         );
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['Projeto de Infraestrutura Ágil', 'Engenharia',
-             'Planejamento e execução de projetos de infraestrutura inteligente para ambientes corporativos modernos e sustentáveis.',
-             3200.00, 'Ativo', 4.9, 8, 1, null, prestBuild ? prestBuild.id : null, 'BuildTech Engenharia']
+            ['Projeto de Infraestrutura Ágil', 'Engenharia', 'Planejamento e execução de projetos de infraestrutura inteligente para ambientes corporativos modernos e sustentáveis.', 3200.00, 'Ativo', 4.9, 8, 1, null, prestBuild ? prestBuild.id : null, 'BuildTech Engenharia']
         );
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['Treinamento em Metodologias Ágeis', 'Educação',
-             'Capacitação completa para equipes em metodologias como Scrum e Kanban para escalar a produtividade do seu negócio.',
-             1200.00, 'Ativo', 4.2, 21, 0, null, prestEduca ? prestEduca.id : null, 'EducaPro Corp']
+            ['Treinamento em Metodologias Ágeis', 'Educação', 'Capacitação completa para equipes em metodologias como Scrum e Kanban para escalar a produtividade do seu negócio.', 1200.00, 'Ativo', 4.2, 21, 0, null, prestEduca ? prestEduca.id : null, 'EducaPro Corp']
         );
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['Desenvolvimento de Sistemas Cloud', 'Tecnologia',
-             'Criação de soluções personalizadas hospedadas em nuvem, garantindo alta disponibilidade e segurança para seus clientes.',
-             4500.00, 'Ativo', 4.7, 15, 0, null, prestCloud ? prestCloud.id : null, 'CloudSys IT']
+            ['Desenvolvimento de Sistemas Cloud', 'Tecnologia', 'Criação de soluções personalizadas hospedadas em nuvem, garantindo alta disponibilidade e segurança para seus clientes.', 4500.00, 'Ativo', 4.7, 15, 0, null, prestCloud ? prestCloud.id : null, 'CloudSys IT']
         );
         await db.run(
             `INSERT INTO servicos (titulo, categoria, descricao, valor, status, avaliacao, total_avaliacoes, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['Auditoria Estrutural e de Processos', 'Engenharia',
-             'Serviço especializado em auditoria de plantas industriais e mapeamento de riscos operacionais.',
-             2800.00, 'Ativo', 4.0, 9, 0, null, prestNova ? prestNova.id : null, 'NovaEng Soluções']
+            ['Auditoria Estrutural e de Processos', 'Engenharia', 'Serviço especializado em auditoria de plantas industriais e mapeamento de riscos operacionais.', 2800.00, 'Ativo', 4.0, 9, 0, null, prestNova ? prestNova.id : null, 'NovaEng Soluções']
         );
         console.log('Serviços inseridos automaticamente!');
     }
 }
 
 // =========================================
-// ROTA DE PAGAMENTO (STRIPE)
+// ROTAS DE PAGAMENTO (HÍBRIDO)
 // =========================================
+
+// ── PIX via Mercado Pago ───────────────────────────────────────────────────
+// Body esperado: { id_evento, id_usuario, metodo: 'pix', valor, email_cliente }
+// Retorna:       { sucesso, id_inscricao, qr_code_base64, qr_code_copia_cola }
 app.post('/api/comprar', async (req, res) => {
-    const { id_evento, id_usuario, valor, email_cliente } = req.body;
-    
+    const { id_evento, id_usuario, metodo, valor, email_cliente } = req.body;
     try {
-        // 1. Registrar a intenção de compra no banco de dados como Pendente
+        const resultDB = await db.run(`
+            INSERT INTO inscricoes (id_usuario, id_evento, metodo, valor, status) 
+            VALUES (?, ?, ?, ?, 'Pendente')
+        `, [id_usuario, id_evento, metodo, valor]);
+
+        const idInscricao = resultDB.lastID;
+
+        if (metodo === 'pix') {
+            // ── Mercado Pago: gera QR Code PIX ──
+            const payment = new Payment(mpClient);
+            const respostaMP = await payment.create({
+                body: {
+                    transaction_amount: Number(valor),
+                    description: `Inscrição Evento #${id_evento} - WE Corp`,
+                    payment_method_id: 'pix',
+                    payer: { email: email_cliente || 'test_user_wecorp@test.com' }
+                }
+            });
+
+            return res.json({
+                sucesso: true,
+                id_inscricao: idInscricao,
+                qr_code_base64:    respostaMP.point_of_interaction.transaction_data.qr_code_base64,
+                qr_code_copia_cola: respostaMP.point_of_interaction.transaction_data.qr_code
+            });
+        }
+
+        // Fallback para outros métodos sem gateway configurado
+        res.json({ sucesso: true, id_inscricao: idInscricao, mensagem: 'Pedido gerado com sucesso!' });
+
+    } catch (error) {
+        console.error('Erro no pagamento (MP):', error);
+        res.status(500).json({ sucesso: false, mensagem: 'Erro ao processar o pagamento com o Mercado Pago.' });
+    }
+});
+
+// ── Cartão / Boleto via Stripe ─────────────────────────────────────────────
+// Body esperado: { id_evento, id_usuario, valor, email_cliente }
+// Retorna:       { sucesso, id_inscricao, clientSecret }
+app.post('/api/comprar-stripe', async (req, res) => {
+    const { id_evento, id_usuario, valor, email_cliente } = req.body;
+    try {
         const resultDB = await db.run(`
             INSERT INTO inscricoes (id_usuario, id_evento, metodo, valor, status) 
             VALUES (?, ?, 'stripe', ?, 'Pendente')
         `, [id_usuario, id_evento, valor]);
-        
+
         const idInscricao = resultDB.lastID;
+        const amount      = Math.round(Number(valor) * 100); // centavos
 
-        // 2. O Stripe trabalha obrigatoriamente com a menor unidade da moeda (centavos no Brasil).
-        // R$ 199,00 = 19900 centavos
-        const amount = Math.round(Number(valor) * 100);
-
-        // 3. Criar o PaymentIntent no Stripe
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: amount,
+            amount,
             currency: 'brl',
-            payment_method_types: ['card', 'boleto'], // Define os métodos aceitos nesta transação
-            receipt_email: email_cliente || 'test_user_wecorp@test.com',
+            payment_method_types: ['card', 'boleto'],
+            receipt_email: email_cliente || null,
             metadata: {
-                id_inscricao: idInscricao,
-                id_evento: id_evento,
-                id_usuario: id_usuario
+                id_inscricao: String(idInscricao),
+                id_evento:    String(id_evento ?? ''),
+                id_usuario:   String(id_usuario ?? '')
             }
         });
 
-        // 4. Retornar o Client Secret para o frontend renderizar os campos seguros
         return res.json({
             sucesso: true,
             id_inscricao: idInscricao,
@@ -329,8 +349,36 @@ app.post('/api/comprar', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Erro no pagamento Stripe:", error);
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao processar o pagamento com o Stripe.' });
+        console.error('Erro no pagamento (Stripe):', error.message);
+        res.status(500).json({ sucesso: false, mensagem: error.message || 'Erro ao processar com o Stripe.' });
+    }
+});
+
+// ── Assinatura via Stripe (dashboards de parceiro e prestador) ─────────────
+// Body esperado: { id_usuario, valor, email_cliente, descricao }
+// Retorna:       { sucesso, clientSecret }
+app.post('/api/pagar-assinatura', async (req, res) => {
+    const { id_usuario, valor, email_cliente, descricao } = req.body;
+    try {
+        const amount = Math.round(Number(valor) * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount,
+            currency: 'brl',
+            payment_method_types: ['card', 'boleto'],
+            receipt_email: email_cliente || null,
+            description: descricao || 'Assinatura WE Corp',
+            metadata: { id_usuario: String(id_usuario ?? '') }
+        });
+
+        return res.json({
+            sucesso: true,
+            clientSecret: paymentIntent.client_secret
+        });
+
+    } catch (error) {
+        console.error('Erro no pagamento assinatura (Stripe):', error.message);
+        res.status(500).json({ sucesso: false, mensagem: error.message || 'Erro ao processar com o Stripe.' });
     }
 });
 
@@ -370,9 +418,9 @@ app.get('/api/eventos/:id', async (req, res) => {
 });
 
 app.post('/api/eventos', upload.single('imagem'), async (req, res) => {
-    const { titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, tipoCriador, status } = req.body;
-    const nomeImagem = req.file ? req.file.filename : null;
-    const statusInicial = status || ((tipoCriador === 'admin') ? 'Ativo' : 'Pendente');
+    const { titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, tipoCriador } = req.body;
+    const nomeImagem   = req.file ? req.file.filename : null;
+    const statusInicial = (tipoCriador === 'admin') ? 'Ativo' : 'Pendente';
     try {
         const resultado = await db.run(`
             INSERT INTO eventos (titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, status, imagem) 
@@ -395,14 +443,14 @@ app.put('/api/eventos/:id/status', express.json(), async (req, res) => {
 });
 
 app.put('/api/eventos/:id', upload.single('imagem'), async (req, res) => {
-    const { titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, status } = req.body;
+    const { titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao } = req.body;
     try {
         if (req.file) {
-            await db.run(`UPDATE eventos SET titulo=?, categoria=?, local=?, data_evento=?, horario=?, parceiro=?, heads=?, descricao=?, valor=?, conteudo=?, certificacao_inclusa=?, texto_certificacao=?, status=?, imagem=? WHERE id=?`,
-                [titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, status, req.file.filename, req.params.id]);
+            await db.run(`UPDATE eventos SET titulo=?, categoria=?, local=?, data_evento=?, horario=?, parceiro=?, heads=?, descricao=?, valor=?, conteudo=?, certificacao_inclusa=?, texto_certificacao=?, imagem=? WHERE id=?`,
+                [titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, req.file.filename, req.params.id]);
         } else {
-            await db.run(`UPDATE eventos SET titulo=?, categoria=?, local=?, data_evento=?, horario=?, parceiro=?, heads=?, descricao=?, valor=?, conteudo=?, certificacao_inclusa=?, texto_certificacao=?, status=? WHERE id=?`,
-                [titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, status, req.params.id]);
+            await db.run(`UPDATE eventos SET titulo=?, categoria=?, local=?, data_evento=?, horario=?, parceiro=?, heads=?, descricao=?, valor=?, conteudo=?, certificacao_inclusa=?, texto_certificacao=? WHERE id=?`,
+                [titulo, categoria, local, data_evento, horario, parceiro, heads, descricao, valor, conteudo, certificacao_inclusa, texto_certificacao, req.params.id]);
         }
         res.json({ sucesso: true, mensagem: 'Evento atualizado com sucesso!' });
     } catch (error) {
@@ -583,9 +631,9 @@ app.get('/api/servicos/:id', async (req, res) => {
 });
 
 app.post('/api/servicos', upload.single('imagem'), async (req, res) => {
-    const { titulo, categoria, descricao, valor, id_prestador, nome_prestador, tipoCriador, destaque, status } = req.body;
-    const nomeImagem = req.file ? req.file.filename : null;
-    const statusInicial = status || ((tipoCriador === 'admin') ? 'Ativo' : 'Pendente');
+    const { titulo, categoria, descricao, valor, id_prestador, nome_prestador, tipoCriador, destaque } = req.body;
+    const nomeImagem   = req.file ? req.file.filename : null;
+    const statusInicial = (tipoCriador === 'admin') ? 'Ativo' : 'Pendente';
     try {
         const resultado = await db.run(
             'INSERT INTO servicos (titulo, categoria, descricao, valor, status, destaque, imagem, id_prestador, nome_prestador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -598,17 +646,17 @@ app.post('/api/servicos', upload.single('imagem'), async (req, res) => {
 });
 
 app.put('/api/servicos/:id', upload.single('imagem'), async (req, res) => {
-    const { titulo, categoria, descricao, valor, nome_prestador, destaque, status } = req.body;
+    const { titulo, categoria, descricao, valor, nome_prestador, destaque } = req.body;
     try {
         if (req.file) {
             await db.run(
-                'UPDATE servicos SET titulo=?, categoria=?, descricao=?, valor=?, nome_prestador=?, destaque=?, status=?, imagem=? WHERE id=?',
-                [titulo, categoria, descricao, valor, nome_prestador, destaque || 0, status || 'Ativo', req.file.filename, req.params.id]
+                'UPDATE servicos SET titulo=?, categoria=?, descricao=?, valor=?, nome_prestador=?, destaque=?, imagem=? WHERE id=?',
+                [titulo, categoria, descricao, valor, nome_prestador, destaque || 0, req.file.filename, req.params.id]
             );
         } else {
             await db.run(
-                'UPDATE servicos SET titulo=?, categoria=?, descricao=?, valor=?, nome_prestador=?, destaque=?, status=? WHERE id=?',
-                [titulo, categoria, descricao, valor, nome_prestador, destaque || 0, status || 'Ativo', req.params.id]
+                'UPDATE servicos SET titulo=?, categoria=?, descricao=?, valor=?, nome_prestador=?, destaque=? WHERE id=?',
+                [titulo, categoria, descricao, valor, nome_prestador, destaque || 0, req.params.id]
             );
         }
         res.json({ sucesso: true, mensagem: 'Serviço atualizado com sucesso!' });
@@ -632,75 +680,6 @@ app.delete('/api/servicos/:id', async (req, res) => {
         const resultado = await db.run('DELETE FROM servicos WHERE id = ?', [req.params.id]);
         if (resultado.changes > 0) res.json({ sucesso: true, mensagem: 'Serviço removido com sucesso!' });
         else res.status(404).json({ sucesso: false, mensagem: 'Serviço não encontrado.' });
-    } catch (error) {
-        res.status(500).json({ sucesso: false, mensagem: 'Erro interno' });
-    }
-});
-
-// =========================================
-// 7. ROTAS DA API - CLIENTES (USUÁRIOS)
-// =========================================
-app.get('/api/clientes', async (req, res) => {
-    try {
-        const clientes = await db.all("SELECT id, nome, email, cpf, status FROM usuarios WHERE tipo = 'cliente' ORDER BY nome");
-        res.json({ sucesso: true, clientes });
-    } catch (error) {
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar clientes' });
-    }
-});
-
-app.get('/api/clientes/:id', async (req, res) => {
-    try {
-        const cliente = await db.get("SELECT id, nome, email, cpf, status FROM usuarios WHERE id = ? AND tipo = 'cliente'", [req.params.id]);
-        if (cliente) res.json({ sucesso: true, cliente });
-        else res.status(404).json({ sucesso: false, mensagem: 'Cliente não encontrado' });
-    } catch (error) {
-        res.status(500).json({ sucesso: false, mensagem: 'Erro interno' });
-    }
-});
-
-app.post('/api/clientes', async (req, res) => {
-    const { nome, email, senha, cpf, status } = req.body;
-    try {
-        const check = await db.get("SELECT id FROM usuarios WHERE email = ?", [email]);
-        if (check) {
-            return res.status(400).json({ sucesso: false, mensagem: 'E-mail já cadastrado.' });
-        }
-
-        const resultado = await db.run(
-            "INSERT INTO usuarios (nome, email, senha, tipo, cpf, status) VALUES (?, ?, ?, 'cliente', ?, ?)",
-            [nome, email, senha || '123456', cpf || '', status || 'Ativo']
-        );
-        res.json({ sucesso: true, id: resultado.lastID, mensagem: 'Cliente cadastrado com sucesso!' });
-    } catch (error) {
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao cadastrar cliente' });
-    }
-});
-
-app.put('/api/clientes/:id', async (req, res) => {
-    const { nome, email, senha, cpf, status } = req.body;
-    try {
-        let sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, status=? WHERE id=? AND tipo='cliente'";
-        let params = [nome, email, cpf || '', status || 'Ativo', req.params.id];
-
-        if (senha) {
-            sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, status=?, senha=? WHERE id=? AND tipo='cliente'";
-            params = [nome, email, cpf || '', status || 'Ativo', senha, req.params.id];
-        }
-
-        const resultado = await db.run(sql, params);
-        if (resultado.changes > 0) res.json({ sucesso: true, mensagem: 'Cliente atualizado com sucesso!' });
-        else res.status(404).json({ sucesso: false, mensagem: 'Cliente não encontrado.' });
-    } catch (error) {
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao atualizar cliente' });
-    }
-});
-
-app.delete('/api/clientes/:id', async (req, res) => {
-    try {
-        const resultado = await db.run("DELETE FROM usuarios WHERE id = ? AND tipo = 'cliente'", [req.params.id]);
-        if (resultado.changes > 0) res.json({ sucesso: true, mensagem: 'Cliente removido com sucesso!' });
-        else res.status(404).json({ sucesso: false, mensagem: 'Cliente não encontrado.' });
     } catch (error) {
         res.status(500).json({ sucesso: false, mensagem: 'Erro interno' });
     }
