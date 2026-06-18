@@ -1,0 +1,33 @@
+{
+  "name": "programacaoweb-projeto-main",
+  "version": "1.0.0",
+  "description": "A WE Corp é uma aplicação web Full Stack desenvolvida para conectar empresas, prestadores de serviço e clientes. A plataforma oferece um sistema completo de gestão de eventos, venda de ingressos e administração de assinaturas para parceiros institucionais.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon --ignore database.sqlite --ignore uploads/ server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ana-Bastoss/trabalhobd_bkd.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Ana-Bastoss/trabalhobd_bkd/issues"
+  },
+  "homepage": "https://github.com/Ana-Bastoss/trabalhobd_bkd#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "mercadopago": "^3.0.0",
+    "multer": "^2.1.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
