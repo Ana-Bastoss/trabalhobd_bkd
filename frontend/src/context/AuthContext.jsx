@@ -1,10 +1,6 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
-// ── Única adição: helpers de UI ──────────────────────────────────────────────
 import { toastError, confirmDialog } from '../lib/ui';
-// ────────────────────────────────────────────────────────────────────────────
 
-// Criando o Contexto Global
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -25,9 +21,6 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    // ==========================================
-    // FUNÇÕES DE LOGIN E LOGOUT (Antigo auth.js)
-    // ==========================================
     const login = async (email, senha) => {
         try {
             const resposta = await fetch('/api/login', {
@@ -52,7 +45,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // ── window.confirm → confirmDialog (async) ───────────────────────────────
     const logout = async () => {
         const ok = await confirmDialog({
             title: 'Encerrar sessão',
@@ -66,11 +58,7 @@ export const AuthProvider = ({ children }) => {
             window.location.href = '/';
         }
     };
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ==========================================
-    // CONTROLE DOS MODAIS (Antigo main.js)
-    // ==========================================
     const openModals = {
         login: () => {
             setIsRegisterOpen(false);
@@ -86,7 +74,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Disponibiliza as variáveis e funções para todo o projeto
     return (
         <AuthContext.Provider value={{ user, login, logout, isLoginOpen, isRegisterOpen, openModals }}>
             {children}
