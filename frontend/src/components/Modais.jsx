@@ -1,35 +1,26 @@
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import '../assets/style.css'; // Mantém o estilo original
-// ── Única adição: toasts de feedback ─────────────────────────────────────────
+import '../assets/style.css';
 import { toastSuccess, toastError } from '../lib/ui';
-// ────────────────────────────────────────────────────────────────────────────
 
 const Modais = () => {
-    // 1. Puxa as variáveis de inteligência do Contexto
     const { isLoginOpen, isRegisterOpen, openModals, login } = useContext(AuthContext);
 
-    // Estados locais para os inputs de login
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
 
-    // Função para lidar com o envio do formulário de login
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         const resultado = await login(email, senha);
         if (resultado.sucesso) {
-            // ── toast de boas-vindas ──────────────────────────────────────────
             toastSuccess(`Bem-vindo(a), ${resultado.usuario.nome.split(' ')[0]}!`);
         } else {
-            // ── alert → toastError ────────────────────────────────────────────
             toastError(resultado.mensagem);
         }
     };
 
-    // 2. Se nenhum modal estiver aberto, não renderiza nada na tela (deixa o site leve)
     if (!isLoginOpen && !isRegisterOpen) return null;
 
-    // 3. Renderiza o HTML (JSX) do modal que estiver ativo
     return (
         <>
             {/* MODAL DE LOGIN */}
