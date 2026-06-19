@@ -1,36 +1,26 @@
-/* =========================================
-   1. VARIÁVEIS DE CORES E TIPOGRAFIA (Tema Corrigido)
-========================================= */
 :root {
-    /* Cores do Tema (Modernizadas e Padronizadas) */
-    --theme-teal-light: #a2d2d2;   /* Azul dos botões (Manter como sotaque) */
-    --theme-teal-main: #83b6b1;    /* Azul-petróleo principal */
-    --theme-teal-elegant: #006666; /* Azul-petróleo elegante para títulos */
-    --theme-accent-peach: #f8c8b8; /* Cor das asas da borboleta */
-    --theme-terracotta: #9a7261;   /* Base do gradiente de login */
+    --theme-teal-light: #a2d2d2;
+    --theme-teal-main: #83b6b1;
+    --theme-teal-elegant: #006666;
+    --theme-accent-peach: #f8c8b8;
+    --theme-terracotta: #9a7261;
     
-    /* Cores de Fundo e Texto Elegantes (Grays) */
     --bg-white: #ffffff;
-    --bg-light-gray: #f8f9fa;     /* Cinza elegante para fundo */
-    --bg-card-gray: #e0e0e0;      /* Cinza elegante para os cards Sobre Nós */
+    --bg-light-gray: #f8f9fa;
+    --bg-card-gray: #e0e0e0;
     
-    --text-dark: #333333;         /* Texto principal altamente legível */
-    --text-muted: #666666;        /* Texto secundário */
-    --text-light: #ffffff;        /* Texto claro */
+    --text-dark: #333333;
+    --text-muted: #666666;
+    --text-light: #ffffff;
     
-    /* Nova Tipografia Modernizada e Padronizada */
     --font-standard: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
     
-    /* Efeitos e Sombras */
     --shadow-subtle: 0 4px 6px rgba(0,0,0,0.05);
     --shadow-medium: 0 10px 20px rgba(0,0,0,0.1);
     --transition-standard: all 0.3s ease;
 }
 
 
-/* =========================================
-   2. RESETS E CONFIGURAÇÕES GERAIS
-========================================= */
 * {
     margin: 0;
     padding: 0;
@@ -51,10 +41,6 @@ body {
     min-height: 100vh;
 }
 
-
-/* =========================================
-   3. GRADIENTE DE FUNDO FULL-PAGE
-========================================= */
 .site-background-gradient {
     position: fixed; 
     top: 0;
@@ -73,10 +59,6 @@ main {
     z-index: 1; 
 }
 
-
-/* =========================================
-   4. HEADER / NAVEGAÇÃO DIRETA NA PÁGINA
-========================================= */
 header.navbar-direct {
     width: 100%;
     background-color: transparent; 
@@ -101,20 +83,18 @@ header.navbar-direct {
     height: 100px;
 }
 
-/* Transformamos o nav em um container flexível para controlar o espaçamento */
 .navbar-direct nav {
     display: flex;
     align-items: center;
-    gap: 40px; /* Aumente ou diminua este valor para ajustar a distância exata */
+    gap: 40px;
 }
 
 .navbar-direct nav a {
     text-decoration: none;
     color: var(--text-dark);
     font-weight: 600;
-    font-size: 1rem; /* Aumentei um pouquinho a fonte para dar mais presença */
+    font-size: 1rem;
     transition: var(--transition-standard);
-    /* Removido o margin-left antigo, pois o 'gap' acima já faz o trabalho */
 }
 
 .navbar-direct nav a:not(.btn-login):hover {
@@ -124,7 +104,7 @@ header.navbar-direct {
 .navbar-direct .btn-login {
     background-color: #000000;
     color: var(--text-light);
-    padding: 10px 25px; /* Deixei o botão um pouco mais largo */
+    padding: 10px 25px;
     border-radius: 25px;
     border: none;
     font-size: 0.95rem;
@@ -138,10 +118,6 @@ header.navbar-direct {
     transform: translateY(-2px);
 }
 
-
-/* =========================================
-   5. SEÇÃO HERÓI (SOBRE NÓS) - CARDS
-========================================= */
 .hero-section {
     text-align: center;
     padding: 120px 20px;
@@ -191,7 +167,6 @@ header.navbar-direct {
     box-shadow: 0 20px 40px rgba(0,0,0,0.15);
 }
 
-/* TÍTULO */
 .card h3 {
     line-height: 1.3;
     margin-bottom: 15px;
@@ -200,7 +175,6 @@ header.navbar-direct {
     font-weight: 700;
 }
 
-/* TEXTO */
 .card p {
     color: var(--text-dark);
     line-height: 1.6;
@@ -222,33 +196,27 @@ header.navbar-direct {
     100% { transform: translateY(0px); }
 }
 
-
-/* =========================================
-   6. SEÇÃO DE EVENTOS (Design Sério e Integrado)
-========================================= */
 .events-section {
     padding: 80px 20px;
     max-width: 1200px;
     margin: 0 auto;
-    /* Removido o background, backdrop-filter e bordas para integrar à página */
 }
 
 .events-section h2 {
     text-align: center;
     margin-bottom: 50px;
     font-size: 2.2rem;
-    color: #1a1a1a; /* Preto sério e elegante */
+    color: #1a1a1a;
     font-weight: 700;
 }
 
-/* Painel de Busca mais limpo e profissional */
 .search-wrapper {
     background: #ffffff;
     padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04); /* Sombra mais sutil */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
     margin-bottom: 40px;
-    border: 1px solid #e0e0e0; /* Borda cinza clara e discreta */
+    border: 1px solid #e0e0e0;
 }
 
 .search-container {
@@ -288,10 +256,9 @@ header.navbar-direct {
 .date-input:focus, 
 .filter-select:focus {
     outline: none;
-    border-color: var(--theme-teal-main); /* Destaque ciano ao clicar */
+    border-color: var(--theme-teal-main);
 }
 
-/* Botao de busca escuro e elegante */
 .btn-search {
     min-height: 45px;
     background-color: #1a1a1a;
@@ -326,7 +293,7 @@ header.navbar-direct {
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
     border: 1px solid #eaeaea;
-    border-left: 5px solid var(--theme-teal-main); /* Borda lateral ciano para identidade visual */
+    border-left: 5px solid var(--theme-teal-main);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -343,7 +310,6 @@ header.navbar-direct {
     flex: 1;
 }
 
-/* Tags com visual mais neutro (Cinza claro com texto escuro) */
 .tag {
     background: #f0f0f0; 
     color: #333333;
@@ -365,10 +331,9 @@ header.navbar-direct {
 .event-details p {
     margin-bottom: 6px;
     font-size: 0.95rem;
-    color: #555555; /* Cinza médio para os textos de apoio */
+    color: #555555;
 }
 
-/* Os "strong" (Local, Hora, etc) ganham a cor ciano elegante */
 .event-details strong {
     color: var(--theme-teal-elegant); 
 }
@@ -380,10 +345,6 @@ header.navbar-direct {
     border-radius: 0 15px 15px 0;
 }
 
-
-/* =========================================
-   7. SEÇÃO DE PARCEIROS
-========================================= */
 .partners-section {
     text-align: center;
     padding: 80px 20px;
@@ -456,10 +417,6 @@ header.navbar-direct {
     color: var(--theme-teal-main);
 }
 
-
-/* =========================================
-   8. MODAL (LOGIN E CADASTRO)
-========================================= */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -667,9 +624,6 @@ header.navbar-direct {
 }
 
 
-/* =========================================
-   9. FOOTER
-========================================= */
 footer {
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(5px);
@@ -725,10 +679,6 @@ footer {
     color: var(--theme-teal-main);
 }
 
-
-/* =========================================
-   10. SEÇÃO DE SERVIÇOS
-========================================= */
 .services-section {
     padding: 80px 20px;
     max-width: 1200px;
@@ -758,22 +708,19 @@ footer {
 }
 
 .highlight-icon {
-    color: #f39c12; /* Amarelo dourado para a estrela de recomendação */
+    color: #f39c12;
 }
 
-/* Grid de Serviços */
 .services-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 30px;
 }
 
-/* O grid geral pode ter cards um pouco menores se quiser comportar 3 por linha no desktop */
 .general-grid {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
-/* Cards de Serviço */
 .service-card {
     background: #ffffff;
     padding: 30px;
@@ -791,7 +738,6 @@ footer {
     border-color: var(--theme-teal-main);
 }
 
-/* Destaque visual nas recomendações */
 .highlight-card {
     border: 2px solid var(--theme-teal-light);
     background: linear-gradient(to bottom right, #ffffff, #fdfdfd);
@@ -840,7 +786,6 @@ footer {
     flex-grow: 1; /* Empurra o botão para a base do card */
 }
 
-/* Botão de ação do card */
 .btn-service {
     background: transparent;
     color: #1a1a1a;
@@ -862,10 +807,6 @@ footer {
     border-color: var(--theme-teal-elegant);
 }
 
-
-/* =========================================
-   11. PÁGINA DE DETALHES DO EVENTO & CHECKOUT
-========================================= */
 .event-page-container {
     max-width: 1200px;
     margin: 40px auto 80px auto;
@@ -963,7 +904,6 @@ footer {
     border: 1px solid #eaeaea;
 }
 
-/* Coluna da Direita (Checkout) */
 .checkout-card {
     background: #ffffff;
     padding: 30px;
@@ -1012,7 +952,6 @@ footer {
     margin-bottom: 25px;
 }
 
-/* Abas de Pagamento */
 .payment-tabs {
     display: flex;
     gap: 10px;
@@ -1070,12 +1009,8 @@ footer {
     color: #28a745; 
 }
 
-
-/* =========================================
-   12. PAINEL ADMINISTRATIVO (DASHBOARD)
-========================================= */
 .admin-body {
-    background-color: #f4f7f6; /* Fundo cinza bem claro para destacar as tabelas brancas */
+    background-color: #f4f7f6;
     margin: 0;
     overflow-x: hidden;
 }
@@ -1090,10 +1025,9 @@ footer {
 
 .dashboard-container {
     display: flex;
-    min-height: calc(100vh - 80px); /* Altura da tela menos o cabeçalho */
+    min-height: calc(100vh - 80px);
 }
 
-/* Menu Lateral */
 .admin-sidebar {
     width: 280px;
     background-color: #1a1a1a;
@@ -1194,7 +1128,6 @@ footer {
     color: var(--theme-teal-elegant);
 }
 
-/* Tabelas do Admin */
 .admin-table {
     width: 100%;
     background: #ffffff;
@@ -1223,7 +1156,6 @@ footer {
     background-color: #fcfcfc;
 }
 
-/* Status Tags */
 .status-tag {
     padding: 5px 10px;
     border-radius: 20px;
@@ -1246,9 +1178,6 @@ footer {
     color: #e67e22;
 }
 
-/* =========================================
-   Botões de Ação na Tabela (Padronizados)
-========================================= */
 .action-buttons {
     display: flex;
     gap: 8px;
@@ -1264,13 +1193,12 @@ footer {
     padding: 8px 12px;
     font-size: 0.85rem;
     font-weight: 600;
-    min-width: 95px; /* Garante que todos tenham a mesma largura */
+    min-width: 95px;
     border-radius: 6px;
     transition: all 0.2s;
     cursor: pointer;
 }
 
-/* Variações de Cores dos Botões */
 .btn-approve { 
     background-color: #d4edda; 
     color: #155724; 
@@ -1306,10 +1234,6 @@ footer {
 }
 .btn-disable:hover { background-color: #ffcdd2; }
 
-
-/* =========================================
-   13. MODAL DE PERFIL ADMIN
-========================================= */
 .admin-profile-modal {
     background: #fff;
     width: 90%;
@@ -1347,7 +1271,6 @@ footer {
     line-height: 1.5;
 }
 
-/* Botao Fechar (X) em modais de perfil admin - contraste com fundo branco */
 .admin-profile-modal .close-modal {
     position: absolute;
     top: 15px;
@@ -1373,7 +1296,6 @@ footer {
     transform: scale(1.05);
 }
 
-/* Formularios dentro do modal admin */
 .admin-profile-modal form {
     display: flex;
     flex-direction: column;
@@ -1449,10 +1371,6 @@ footer {
     color: #ef6c00; 
 }
 
-
-/* =========================================
-   14. NOTIFICAÇÕES E BADGES
-========================================= */
 .notification-badge {
     background-color: #e74c3c;
     color: white;
@@ -1464,10 +1382,6 @@ footer {
     display: inline-block;
 }
 
-
-/* =========================================
-   15. DASHBOARD FINANCEIRO (PRESTADOR)
-========================================= */
 .finance-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1496,7 +1410,6 @@ footer {
     font-weight: 700;
 }
 
-/* Cores Utilitárias Financeiras */
 .text-green { 
     color: #2e7d32; 
 }
@@ -1509,10 +1422,6 @@ footer {
     color: var(--theme-teal-elegant); 
 }
 
-
-/* =========================================
-   16. SUBMENU DO ADMIN (DASHBOARD)
-========================================= */
 .admin-menu li.has-submenu {
     padding: 0;
     flex-direction: column;
@@ -1537,7 +1446,6 @@ footer {
     transition: transform 0.3s ease;
 }
 
-/* Estado aberto do menu */
 .has-submenu.open .arrow-down {
     transform: rotate(180deg);
 }
@@ -1548,7 +1456,6 @@ footer {
     color: var(--theme-teal-light);
 }
 
-/* O Submenu em si */
 .submenu {
     list-style: none;
     padding: 0;
@@ -1557,7 +1464,7 @@ footer {
 }
 
 .has-submenu.open .submenu {
-    display: block; /* Mostra quando o pai tem a classe .open */
+    display: block;
 }
 
 .submenu li {
@@ -1573,7 +1480,6 @@ footer {
     background-color: #2a2a2a;
 }
 
-/* Botao de Formulario Largo (Ocupa 100% da largura) */
 .btn-block {
     display: flex !important;
     justify-content: center;
@@ -1589,17 +1495,12 @@ footer {
     flex-shrink: 0;
 }
 
-/* Garantir que o botao dentro de formularios de modal tenha tamanho adequado */
 .admin-profile-modal .btn-block {
     min-height: 54px !important;
     font-size: 1.05rem !important;
     margin-top: 30px !important;
 }
 
-
-/* =========================================
-   SEÇÃO DE PLANOS E ASSINATURAS
-========================================= */
 .plans-section {
     padding: 80px 20px;
     max-width: 1200px;
@@ -1627,7 +1528,6 @@ footer {
     gap: 60px;
 }
 
-/* Blocos de Planos */
 .plans-block {
     background: #ffffff;
     border-radius: 20px;
@@ -1663,7 +1563,6 @@ footer {
     font-size: 0.95rem;
 }
 
-/* Grid de Planos */
 .plans-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1674,7 +1573,6 @@ footer {
     grid-template-columns: repeat(2, 1fr);
 }
 
-/* Cards de Plano */
 .plan-card {
     background: #fbfbfb;
     border: 2px solid #e5e5e5;
@@ -1691,7 +1589,6 @@ footer {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
 }
 
-/* Card em Destaque (Ouro) */
 .plan-card.featured {
     border: 2px solid var(--theme-teal-main);
     background: linear-gradient(to bottom, #ffffff, #f8fffe);
@@ -1702,7 +1599,6 @@ footer {
     box-shadow: 0 20px 40px rgba(131, 182, 177, 0.25);
 }
 
-/* Cards Institucionais */
 .plan-card.institutional-card {
     background: #fafafa;
     border: 2px solid #e8e8e8;
@@ -1727,7 +1623,6 @@ footer {
     color: var(--theme-terracotta);
 }
 
-/* Badges */
 .plan-badge {
     position: absolute;
     top: -12px;
@@ -1754,7 +1649,6 @@ footer {
     gap: 6px;
 }
 
-/* Títulos dos Planos */
 .plan-card h4 {
     font-size: 1.4rem;
     color: #1a1a1a;
@@ -1763,7 +1657,6 @@ footer {
     text-align: center;
 }
 
-/* Preços */
 .plan-price {
     text-align: center;
     margin-bottom: 20px;
@@ -1802,7 +1695,6 @@ footer {
     margin-left: 5px;
 }
 
-/* Descrição */
 .plan-description {
     text-align: center;
     color: var(--text-muted);
@@ -1811,7 +1703,6 @@ footer {
     line-height: 1.5;
 }
 
-/* Lista de Benefícios */
 .plan-features {
     list-style: none;
     padding: 0;
@@ -1852,7 +1743,6 @@ footer {
     color: var(--theme-terracotta);
 }
 
-/* Botões de Plano */
 .btn-plan {
     display: flex;
     align-items: center;
@@ -1911,7 +1801,6 @@ footer {
     transform: translateY(-2px);
 }
 
-/* Nota Institucional */
 .institutional-note {
     display: flex;
     align-items: flex-start;
@@ -1936,7 +1825,6 @@ footer {
     margin: 0;
 }
 
-/* Responsividade Planos */
 @media (max-width: 768px) {
     .plans-grid {
         grid-template-columns: 1fr;
