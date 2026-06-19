@@ -48,6 +48,7 @@ function ConfirmDialog({ c }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
