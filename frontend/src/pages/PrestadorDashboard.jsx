@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
-// ── Única adição: importar os helpers de UI ──────────────────────────────────
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
 import { jsPDF } from 'jspdf';
-// ── NOVO: Importando o componente global de Checkout ────────────────────────
 import CheckoutModal from '../components/CheckoutModal';
-// ────────────────────────────────────────────────────────────────────────────
 
 const PrestadorDashboard = () => {
     // ── Sessão ──
@@ -32,14 +29,14 @@ const PrestadorDashboard = () => {
         id: '', titulo: '', categoria: 'Tecnologia', valor: '', descricao: '', imagem: null
     });
 
-    // NOVO: Estado para abrir o Modal do Stripe
+    // Estado para abrir o Modal do Stripe
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-    // NOVO: Avaliações reais do serviço aberto em detalhes
+    // Avaliações reais do serviço aberto em detalhes
     const [avaliacoesServico, setAvaliacoesServico] = useState([]);
     const [loadingAvaliacoes, setLoadingAvaliacoes] = useState(false);
 
-    // NOVO: Tickets de suporte reais do prestador
+    // Tickets de suporte reais do prestador
     const [tickets, setTickets] = useState([]);
     const [formTicket, setFormTicket] = useState({ clienteRelacionado: '', motivo: 'Dúvida sobre Pagamento de Cliente', mensagem: '' });
     const [enviandoTicket, setEnviandoTicket] = useState(false);
@@ -53,9 +50,6 @@ const PrestadorDashboard = () => {
         setServicoSelecionado(null);
     };
 
-    // ==========================================
-    // EFEITO: Verificar sessão e carregar dados
-    // ==========================================
     useEffect(() => {
         const userStr = localStorage.getItem("usuarioLogado");
         if (!userStr) {
@@ -90,7 +84,7 @@ const PrestadorDashboard = () => {
     };
 
     // ==========================================
-    // NOVO: CARREGAR TICKETS DO PRESTADOR
+    // CARREGAR TICKETS DO PRESTADOR
     // ==========================================
     const carregarTickets = async (u) => {
         try {
@@ -151,7 +145,7 @@ const PrestadorDashboard = () => {
         if (!s) return;
         setServicoSelecionado(s);
         openModal('detalhesServico');
-        // NOVO: busca avaliações reais do serviço
+        // busca avaliações reais do serviço
         setLoadingAvaliacoes(true);
         try {
             const resposta = await fetch(`/api/avaliacoes/${id}`);
@@ -179,7 +173,7 @@ const PrestadorDashboard = () => {
     };
 
     // ==========================================
-    // NOVO: EXCLUIR AVALIAÇÃO (moderação do prestador)
+    // EXCLUIR AVALIAÇÃO (moderação do prestador)
     // ==========================================
     const excluirAvaliacao = async (idAvaliacao) => {
         const ok = await confirmDialog({
@@ -207,7 +201,7 @@ const PrestadorDashboard = () => {
     };
 
     // ==========================================
-    // NOVO: ENVIAR TICKET DE SUPORTE (real, via API)
+    // ENVIAR TICKET DE SUPORTE (via API)
     // ==========================================
     const enviarTicket = async () => {
         if (!formTicket.mensagem.trim()) { toastError('Escreva uma mensagem antes de enviar.'); return; }
@@ -604,7 +598,7 @@ const PrestadorDashboard = () => {
                             <p style={{ fontSize: '0.95rem', color: '#555', marginTop: '10px', lineHeight: 1.7 }}>{servicoSelecionado.descricao || 'Sem descrição disponível.'}</p>
                         </div>
 
-                        {/* NOVO: Avaliações reais vindas da API */}
+                        {/* Avaliações reais vindas da API */}
                         <div className="info-section" style={{ padding: '20px', marginTop: '20px', marginBottom: 0 }}>
                             <h3>Avaliações Recebidas</h3>
                             {loadingAvaliacoes ? (
