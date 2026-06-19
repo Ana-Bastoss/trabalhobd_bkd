@@ -25,7 +25,7 @@ A **WE Corp** é uma aplicação web Full Stack que conecta empresas, prestadore
 12. [Mapa de Páginas do Frontend](#12-mapa-de-páginas-do-frontend)
 13. [Componentes Compartilhados do Frontend](#13-componentes-compartilhados-do-frontend)
 14. [Problemas Encontrados e Corrigidos (Histórico Completo)](#14-problemas-encontrados-e-corrigidos-histórico-completo)
-15. [⚠️ Aviso de Segurança — Chaves Removidas do Repositório](#15-️-aviso-de-segurança--chaves-removidas-do-repositório)
+15. [Aviso de Segurança — Chaves Removidas do Repositório](#15-aviso-de-segurança--chaves-removidas-do-repositório)
 16. [Como Executar o Projeto na Sua Máquina](#16-como-executar-o-projeto-na-sua-máquina)
 17. [Testando a API via Postman/Insomnia](#17-testando-a-api-via-postmaninsomnia)
 18. [Limitações Conhecidas e Próximos Passos](#18-limitações-conhecidas-e-próximos-passos)
@@ -616,11 +616,11 @@ Ver detalhamento completo na próxima seção.
 
 ---
 
-## 15. ⚠️ Aviso de Segurança — Chaves Removidas do Repositório
+## 15. Aviso de Segurança — Chaves Removidas do Repositório
 
 > **As chaves do Stripe foram removidas de `backend/server.js` para permitir o push deste repositório ao GitHub.**
 
-O GitHub possui um sistema de **Secret Scanning** que bloqueia automaticamente qualquer `push` contendo segredos reconhecíveis (como chaves `sk_test_...` da Stripe) hardcoded diretamente no código-fonte. Como a chave secreta da Stripe estava escrita literalmente dentro de `server.js`, o push era recusado.
+O GitHub possui um sistema de **Secret Scanning** que bloqueia automaticamente qualquer `push` contendo segredos reconhecíveis (como chaves `sk_test_...` da Stripe) hardcoded diretamente no código-fonte. Como a chave secreta da Stripe estava escrita literalmente dentro de `server.js`, o push era recusado. Mas marcamos como confiável apenas para TESTE.
 
 ### O que isso significa para quem for rodar o projeto
 
@@ -630,7 +630,7 @@ No arquivo `backend/server.js` entregue neste repositório, a linha de inicializ
 const stripe = new Stripe('sk_test_SUA_CHAVE_SECRETA_AQUI');
 ```
 
-Para que os pagamentos via **Cartão e Boleto** funcionem, você precisa:
+Para que os pagamentos via **Cartão e Boleto** funcionem, precisaríamos:
 
 1. Criar uma conta gratuita em [https://dashboard.stripe.com/register](https://dashboard.stripe.com/register).
 2. No Dashboard, ativar o **modo de teste** (toggle no canto superior).
@@ -639,27 +639,6 @@ Para que os pagamentos via **Cartão e Boleto** funcionem, você precisa:
    - A **Publishable key** (`pk_test_...`) → cole em `frontend/src/components/CheckoutModal.jsx`, na chamada `loadStripe('...')`.
 
 O mesmo princípio se aplica ao Mercado Pago: a constante `accessToken: 'TEST-SEU-ACCESS-TOKEN-AQUI'` em `server.js` precisa ser substituída por um Access Token de teste gerado em [https://www.mercadopago.com.br/developers/panel](https://www.mercadopago.com.br/developers/panel) → Suas integrações → Credenciais de teste.
-
-### Recomendação para produção
-
-Hardcoded no código-fonte **não é uma boa prática mesmo em ambiente de testes**. O ideal é mover ambas as chaves para variáveis de ambiente:
-
-```javascript
-// server.js
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
-```
-
-E criar um arquivo `.env` na pasta `backend/` (já presente no `.gitignore` da raiz do projeto, então nunca será commitado):
-
-```env
-STRIPE_SECRET_KEY=sk_test_...
-MP_ACCESS_TOKEN=TEST-...
-```
-
-Use o pacote `dotenv` (`npm install dotenv` e `import 'dotenv/config'` no topo de `server.js`) para carregar essas variáveis automaticamente.
-
----
 
 ## 16. Como Executar o Projeto na Sua Máquina
 
