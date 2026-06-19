@@ -1,5 +1,8 @@
 # 🚀 WE Corp — Plataforma de Eventos e Parcerias
 
+Por: Ana Beatriz Gonçalves Bastos
+Matrícula: UC24102983
+
 A **WE Corp** é uma aplicação web Full Stack que conecta empresas, prestadores de serviço e clientes em um único ecossistema: gestão de eventos, venda de ingressos, vitrine de serviços com avaliações, administração de assinaturas para parceiros institucionais e central de suporte via tickets.
 
 [Assista ao vídeo de demonstração](https://youtu.be/51kPsZMEhKQ)
