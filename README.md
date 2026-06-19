@@ -819,10 +819,10 @@ Content-Type: application/json
 
 ## 18. Limitações Conhecidas e Próximos Passos
 
-Esta seção documenta honestamente o que **não** está implementado, para que qualquer pessoa continuando o projeto saiba exatamente onde focar.
+Esta seção documenta honestamente o que **não** está implementado ou pode ser melhorado.
 
 | Limitação | Detalhe | Sugestão de próximo passo |
-|---|---|---|
+| --- | --- | --- |
 | **Sem webhooks de pagamento** | Nenhuma rota recebe confirmação assíncrona do Mercado Pago ou da Stripe. O `status` da inscrição fica em `'Pendente'` mesmo após o pagamento ser efetivado no gateway. | Implementar `POST /api/webhooks/mercadopago` e `POST /api/webhooks/stripe`, validando a assinatura de cada provedor e atualizando `inscricoes.status`. |
 | **Senha em texto plano** | `usuarios.senha` é comparada diretamente, sem hash. | Migrar para `bcrypt` (`bcrypt.hash` no cadastro, `bcrypt.compare` no login). |
 | **Sem JWT/expiração de sessão** | A "sessão" no `localStorage` nunca expira sozinha. | Implementar JWT com expiração e refresh token, ou ao menos um timeout de sessão no frontend. |
@@ -834,3 +834,8 @@ Esta seção documenta honestamente o que **não** está implementado, para que 
 | **`tsconfig.json` do backend não é usado** | O backend roda em JavaScript puro (ESM); o `tsconfig.json` foi deixado propositalmente para uma futura migração a TypeScript, mas nenhum arquivo `.ts` existe hoje. | Migração futura opcional. |
 | **Tabela `faturas_assinatura` sem rotas** | Existe no schema, mas nenhuma rota lê ou escreve nela — as "faturas" mostradas nos dashboards são valores fixos (R$ 1.250 / R$ 149,90). | Conectar `POST /api/pagar-assinatura` para também gravar uma linha em `faturas_assinatura`, e criar `GET /api/faturas/:id_usuario` para listar o histórico real. |
 | **Upload aceita apenas 1 imagem por evento/serviço** | Sem galeria de múltiplas fotos. | Trocar `upload.single('imagem')` por `upload.array('imagens', N)` e ajustar o schema para uma tabela `imagens` separada. |
+| **Credenciais e chaves expostas no código** | Tokens de acesso do Mercado Pago e chave secreta da Stripe estão hardcoded no `server.js`. | Instalar e configurar a biblioteca `dotenv`, movendo todas as chaves sensíveis para um arquivo `.env` protegido para garantir boas práticas de cibersegurança. |
+| **Recuperação de senha e Login Social inativos** | O link de "Esqueci minha senha" e os botões de login via Facebook e Google nos modais são apenas visuais. | Criar tabela de tokens temporários com `nodemailer` para redefinição de senha e integrar OAuth 2.0 (via `Passport.js` ou Firebase Auth) para acessos sociais. |
+| **Arquitetura monolítica e falta de RBAC** | Toda a inicialização e rotas estão no `server.js`, e as rotas não validam ativamente o nível de permissão (ex: admin, parceiro) do usuário que faz a requisição. | Refatorar o backend para o padrão MVC e criar middlewares de autorização baseados no perfil do usuário, melhorando a governança do código. |
+| **Banco de dados local em disco** | O uso do SQLite local (`database.sqlite`) atende ao ambiente de desenvolvimento, mas limita o escalonamento. | Planejar a migração da base de dados se necessário. |
+| **Acessibilidade (A11y) incompleta** | A interface HTML/React atual carece de marcações estruturais que permitam uma navegação plena por leitores de tela, o que conflita com o foco da WE CORP em soluções para pessoas com deficiências. | Revisar os componentes adicionando atributos ARIA, garantindo navegação por teclado e descrições de imagem precisas, tornando a plataforma nativamente acessível. |
