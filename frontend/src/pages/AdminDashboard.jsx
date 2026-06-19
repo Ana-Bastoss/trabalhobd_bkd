@@ -5,33 +5,22 @@ import UiHost from '../components/Ui';
 import { jsPDF } from 'jspdf';
 
 const AdminDashboard = () => {
-    // ==========================================
-    // ESTADOS GERAIS E NAVEGAÇÃO
-    // ==========================================
     const [user, setUser] = useState({ nome: 'Administrador', email: '', tipo: 'admin' });
     const [activeTab, setActiveTab]         = useState('parceiros');
     const [openSubmenus, setOpenSubmenus]   = useState({ parceiros: false, prestadores: false });
     const [activeModal, setActiveModal]     = useState(null);
 
-    // ==========================================
-    // ESTADOS DE DADOS (API)
-    // ==========================================
     const [parceirosGlobais,   setParceirosGlobais]   = useState([]);
     const [prestadoresGlobais, setPrestadoresGlobais] = useState([]);
     const [servicosGlobais,    setServicosGlobais]    = useState([]);
     const [eventosGlobais,     setEventosGlobais]     = useState([]);
-    const [clientesGlobais,    setClientesGlobais]    = useState([]); // NOVO: Estado de Clientes
+    const [clientesGlobais,    setClientesGlobais]    = useState([]);
 
-    // NOVO: Tickets de suporte reais (substituem a linha hardcoded da Central de Suporte)
     const [tickets, setTickets] = useState([]);
 
-    // NOVO: Avaliações reais carregadas para o modal de Moderação de Feedbacks
     const [avaliacoesAdmin, setAvaliacoesAdmin] = useState([]);
     const [servicoAvalAdmin, setServicoAvalAdmin] = useState(null);
 
-    // ==========================================
-    // ESTADOS DE FILTROS
-    // ==========================================
     const [filtroBuscaParceiro,     setFiltroBuscaParceiro]     = useState('');
     const [filtroBuscaPrestador,    setFiltroBuscaPrestador]    = useState('');
     const [filtroSegmentoPrestador, setFiltroSegmentoPrestador] = useState('Todos');
@@ -43,7 +32,7 @@ const AdminDashboard = () => {
     const [filtroParceiroEvento,    setFiltroParceiroEvento]    = useState('Todos');
     const [filtroDataInicio,        setFiltroDataInicio]        = useState('');
     const [filtroDataFim,           setFiltroDataFim]           = useState('');
-    const [filtroBuscaCliente,      setFiltroBuscaCliente]      = useState(''); // NOVO: Filtro Cliente
+    const [filtroBuscaCliente,      setFiltroBuscaCliente]      = useState('');
 
     // ==========================================
     // ESTADOS DE FORMULÁRIOS (CRUD)
@@ -64,20 +53,15 @@ const AdminDashboard = () => {
     });
     const [certificacaoInclusa, setCertificacaoInclusa] = useState('nao');
 
-    // NOVO: Estado para formulário de Clientes
     const [formCliente, setFormCliente] = useState({
         id: '', nome: '', email: '', cpf: '', senha: '', status: 'Ativo'
     });
 
-    // Itens selecionados para modais de visualização
     const [parceiroSelecionado, setParceiroSelecionado] = useState(null);
     const [servicoSelecionado,  setServicoSelecionado]  = useState(null);
     const [eventoSelecionado,   setEventoSelecionado]   = useState(null);
     const [clienteSelecionado,  setClienteSelecionado]  = useState(null); // NOVO
 
-    // ==========================================
-    // FUNÇÕES DE MODAL
-    // ==========================================
     const openModal   = (modalName) => setActiveModal(modalName);
     const closeModals = () => {
         setActiveModal(null);
@@ -104,9 +88,6 @@ const AdminDashboard = () => {
         }
     };
 
-    // ==========================================
-    // EFEITO: Verificar sessão e carregar dados
-    // ==========================================
     useEffect(() => {
         const userStr = localStorage.getItem("usuarioLogado");
         if (userStr) {
@@ -128,9 +109,6 @@ const AdminDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ==========================================
-    // CARREGAMENTO DE DADOS (API)
-    // ==========================================
     const carregarTabelasEventos = async () => {
         try {
             const r = await fetch('/api/eventos');
@@ -171,7 +149,6 @@ const AdminDashboard = () => {
         } catch (e) { console.error("Erro ao carregar clientes:", e); }
     };
 
-    // NOVO: Carrega tickets reais de suporte
     const carregarTickets = async () => {
         try {
             const r = await fetch('/api/tickets');
@@ -180,9 +157,6 @@ const AdminDashboard = () => {
         } catch (e) { console.error("Erro ao carregar tickets:", e); }
     };
 
-    // ==========================================
-    // FILTRAGEM DERIVADA DO ESTADO
-    // ==========================================
     const parceirosFiltrados = parceirosGlobais.filter(p => {
         const busca = filtroBuscaParceiro.toLowerCase();
         return p.nome.toLowerCase().includes(busca) ||
@@ -532,7 +506,7 @@ const AdminDashboard = () => {
     };
 
     // ==========================================
-    // CLIENTES - CRUD (TABELA REAL)
+    // CLIENTES - CRUD
     // ==========================================
     const abrirNovoCliente = () => {
         setFormCliente({ id: '', nome: '', email: '', cpf: '', senha: '', status: 'Ativo' });
@@ -625,9 +599,6 @@ const AdminDashboard = () => {
         } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
 
-    // ==========================================
-    // NOVO: MODERAÇÃO DE AVALIAÇÕES (Feedbacks)
-    // ==========================================
     const carregarAvaliacoesServico = async (idServico) => {
         try {
             const r = await fetch(`/api/avaliacoes/${idServico}`);
@@ -662,9 +633,6 @@ const AdminDashboard = () => {
         } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
 
-    // ==========================================
-    // NOVO: GESTÃO DE TICKETS DE SUPORTE
-    // ==========================================
     const fecharTicket = async (id) => {
         const ok = await confirmDialog({
             title: 'Marcar como Resolvido?',
@@ -703,9 +671,7 @@ const AdminDashboard = () => {
         } catch (e) { toastError('Erro de conexão com o servidor.'); }
     };
 
-    // ==========================================
-    // GERAÇÃO DE CONTRATO EM PDF
-    // ==========================================
+ 
     const handleDownloadContratoParceiro = (parceiro) => {
         const doc = new jsPDF();
         
@@ -784,9 +750,6 @@ const AdminDashboard = () => {
         toastSuccess('Download do contrato do prestador concluído!');
     };
 
-    // ==========================================
-    // RENDER
-    // ==========================================
     return (
         <div className="admin-body">
             <UiHost />
@@ -1080,7 +1043,7 @@ const AdminDashboard = () => {
                             <button className="btn-search" onClick={abrirNovoCliente}><i className="fas fa-plus"></i> Novo Cliente</button>
                         </div>
                         
-                        {/* NOVO: Filtro e busca de Clientes */}
+                        {/* Filtro e busca de Clientes */}
                         <div className="search-wrapper" style={{ padding: '20px', marginBottom: '25px', background: '#fff', borderRadius: '10px', border: '1px solid #eaeaea' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '20px', alignItems: 'end' }}>
                                 <div className="input-group-search">
