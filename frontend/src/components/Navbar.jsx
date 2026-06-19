@@ -6,7 +6,6 @@ const Navbar = () => {
     const { user, openModals, logout } = useContext(AuthContext);
     const location = useLocation();
 
-    // Não renderiza a Navbar padrão dentro dos dashboards (pois eles têm header próprio)
     if (location.pathname.startsWith('/dashboard')) return null;
 
     return (
@@ -24,7 +23,6 @@ const Navbar = () => {
                     <a href="/#planos">Planos</a>
                     <a href="/#parceiros">Parceiros</a>
                     
-                    {/* A MÁGICA DO AUTH.JS ACONTECE AQUI */}
                     {user ? (
                         <>
                             {user.tipo === 'admin' && (
