@@ -1,11 +1,3 @@
-/* ============================================================
-   ui.css — Toast system + Confirm dialog
-   Paleta herdada de style.css (teal, terracotta)
-   Salvar em: src/components/ui.css
-   Importar em: src/main.jsx  →  import './components/ui.css'
-   ============================================================ */
-
-/* ---------- Toast stack ---------- */
 .wc-toast-stack {
   position: fixed;
   top: 24px;
@@ -81,7 +73,6 @@
   to   { transform: translateX(0);    opacity: 1; }
 }
 
-/* ---------- Confirm dialog overlay ---------- */
 .wc-confirm-overlay {
   position: fixed;
   inset: 0;
@@ -145,7 +136,6 @@
   justify-content: center;
 }
 
-/* ---------- Botões do confirm ---------- */
 .wc-btn {
   font-family: inherit;
   border: 0;
