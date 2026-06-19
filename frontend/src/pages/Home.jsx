@@ -2,12 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import '../assets/style.css';
-// ── Única adição: UiHost para exibir toasts disparados na página ─────────────
 import UiHost from '../components/Ui';
-// ────────────────────────────────────────────────────────────────────────────
 
 const Home = () => {
-    // ── Auth context (substitui o sistema duplicado de modal que estava aqui) ──
     const { openModals } = useContext(AuthContext);
 
     // ── Dados de eventos (carregados via API) ──
@@ -56,13 +53,11 @@ const Home = () => {
 
     return (
         <>
-            {/* ── UiHost renderiza toasts flutuantes ── */}
             <UiHost />
 
             <div className="site-background-gradient"></div>
 
             <main>
-                {/* ── SOBRE ── */}
                 <section id="sobre" className="hero-section">
                     <h1>A empresa que ajuda o seu negócio a crescer</h1>
                     <p className="subtitle">
@@ -299,13 +294,6 @@ const Home = () => {
                 </section>
             </main>
 
-            {/*
-             * NÃO re-renderiza os modais de login/cadastro aqui.
-             * O componente <Modais /> global em App.jsx, alimentado pelo AuthContext,
-             * já gerencia isLoginOpen / isRegisterOpen para todas as páginas.
-             * Duplicar aqui criava dois sistemas de modal concorrentes com estados
-             * separados, o que impedia o login de funcionar corretamente na Home.
-             */}
         </>
     );
 };
