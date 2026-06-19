@@ -21,7 +21,7 @@ const app        = express();
 const PORT       = 3000;
 
 // =========================================
-// 1. UPLOAD (Multer)
+// UPLOAD (Multer)
 // =========================================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -42,7 +42,7 @@ app.use('/uploads', express.static(uploadDir));
 let db;
 
 // =========================================
-// 2. BANCO DE DADOS
+// BANCO DE DADOS
 // =========================================
 async function setupDatabase() {
     db = await open({ filename: path.join(__dirname, 'database.sqlite'), driver: sqlite3.Database });
@@ -131,7 +131,6 @@ async function setupDatabase() {
         );
     `);
 
-    // Colunas extras em tabelas já existentes (safe)
     const alters = [
         "ALTER TABLE usuarios ADD COLUMN cpf TEXT",
         "ALTER TABLE usuarios ADD COLUMN status TEXT DEFAULT 'Ativo'"
@@ -640,5 +639,5 @@ app.get('/api/inscricoes/usuario/:id_usuario', async (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 setupDatabase()
-    .then(() => app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`)))
-    .catch(err => console.error('❌ Erro:', err));
+    .then(() => app.listen(PORT, () => console.log(`http://localhost:${PORT}`)))
+    .catch(err => console.error('Erro:', err));
