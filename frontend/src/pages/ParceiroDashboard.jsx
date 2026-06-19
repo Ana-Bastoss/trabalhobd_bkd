@@ -3,9 +3,7 @@ import '../assets/style.css';
 import { toastSuccess, toastError, toastInfo, confirmDialog } from '../lib/ui';
 import UiHost from '../components/Ui';
 import { jsPDF } from 'jspdf';
-// ── NOVO: Importando o componente global de Checkout ────────────────────────
 import CheckoutModal from '../components/CheckoutModal';
-// ────────────────────────────────────────────────────────────────────────────
 
 const ParceiroDashboard = () => {
     // ==========================================
@@ -31,19 +29,15 @@ const ParceiroDashboard = () => {
     const [isNovoParticipanteOpen, setIsNovoParticipanteOpen] = useState(false);
     const [isDetalhesContratoOpen, setIsDetalhesContratoOpen] = useState(false);
     
-    // NOVO: Estado para abrir o Modal do Stripe
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-    // NOVO: Participantes reais (carregados quando um evento é selecionado)
     const [participantesGlobais, setParticipantesGlobais] = useState([]);
     const [eventoParticipantesSelecionado, setEventoParticipantesSelecionado] = useState('');
     const [loadingParticipantes, setLoadingParticipantes] = useState(false);
     const [buscaParticipante, setBuscaParticipante] = useState('');
 
-    // NOVO: Formulário de participante manual real
     const [formParticipante, setFormParticipante] = useState({ nome: '', email: '', cpf: '' });
 
-    // NOVO: Ticket de suporte real
     const [mensagemAjuda, setMensagemAjuda] = useState('');
     const [enviandoTicket, setEnviandoTicket] = useState(false);
 
@@ -69,7 +63,6 @@ const ParceiroDashboard = () => {
         }
     }, []);
 
-    // NOVO: recarrega participantes sempre que o evento selecionado no filtro muda
     useEffect(() => {
         carregarParticipantes(eventoParticipantesSelecionado);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,7 +80,6 @@ const ParceiroDashboard = () => {
         }
     };
 
-    // NOVO: Carrega participantes reais inscritos em um evento específico
     const carregarParticipantes = async (idEvento) => {
         if (!idEvento) { setParticipantesGlobais([]); return; }
         setLoadingParticipantes(true);
@@ -197,12 +189,6 @@ const ParceiroDashboard = () => {
         }
     };
 
-    // ==========================================
-    // FUNÇÕES AUXILIARES
-    // ==========================================
-    // ==========================================
-    // NOVO: ADICIONAR PARTICIPANTE MANUAL (real, via API)
-    // ==========================================
     const adicionarParticipanteManual = async () => {
         if (!eventoParticipantesSelecionado) {
             toastError('Selecione o evento de destino no filtro da aba Participantes antes de adicionar.');
@@ -237,9 +223,6 @@ const ParceiroDashboard = () => {
         }
     };
 
-    // ==========================================
-    // NOVO: ENVIAR TICKET DE SUPORTE (real, via API)
-    // ==========================================
     const enviarTicketAjuda = async () => {
         if (!mensagemAjuda.trim()) { toastError('Descreva o problema antes de enviar.'); return; }
         setEnviandoTicket(true);
