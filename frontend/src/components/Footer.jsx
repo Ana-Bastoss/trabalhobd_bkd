@@ -4,7 +4,6 @@ import { Link, useLocation } from 'react-router-dom';
 const Footer = () => {
     const location = useLocation();
     
-    // Esconde o footer nos dashboards
     if (location.pathname.startsWith('/dashboard')) return null;
 
     return (
