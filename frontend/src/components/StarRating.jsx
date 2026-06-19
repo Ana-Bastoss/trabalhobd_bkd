@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 const StarRating = () => {
-    // Guarda a nota selecionada pelo usuário (de 0 a 5)
     const [rating, setRating] = useState(0);
 
     return (
