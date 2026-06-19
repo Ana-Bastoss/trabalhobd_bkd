@@ -2,29 +2,20 @@ import React, { useState, useEffect } from 'react';
 import '../assets/style.css';
 import { toastSuccess, toastError, toastInfo } from '../lib/ui';
 import UiHost from '../components/Ui';
-// ── NOVO: Importando o componente global de Checkout ────────────────────────
 import CheckoutModal from '../components/CheckoutModal';
-// ────────────────────────────────────────────────────────────────────────────
 
 const EventoDetalhes = () => {
-    // ==========================================
-    // ESTADOS DO REACT (Dados e Interface)
-    // ==========================================
+
     const [evento, setEvento] = useState(null);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
     
-    // NOVO: Estado para abrir o Modal do Stripe
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-    // Estados dos Modais (Login e Cadastro)
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
-    // ==========================================
-    // EFEITOS (Buscando dados da API ao carregar)
-    // ==========================================
     useEffect(() => {
         // Carrega o usuário se já estiver logado
         const str = localStorage.getItem('usuarioLogado');
@@ -172,7 +163,6 @@ const EventoDetalhes = () => {
                                         </div>
                                         <p className="checkout-subtitle">Lote 1 - Ingresso Profissional</p>
 
-                                        {/* NOVO: Botão unificado que chama o Modal Seguro do Stripe */}
                                         <button 
                                             className="btn-search btn-checkout-final" 
                                             onClick={iniciarCompra}
@@ -189,7 +179,6 @@ const EventoDetalhes = () => {
                 </section>
             </main>
 
-            {/* ── MODAL DO STRIPE (SÓ RENDERIZA SE LOGADO E EVENTO CARREGADO) ── */}
             {evento && currentUser && (
                 <CheckoutModal 
                     isOpen={isCheckoutOpen}
@@ -202,7 +191,6 @@ const EventoDetalhes = () => {
                 />
             )}
 
-            {/* MODAIS AQUI PARA NÃO QUEBRAR O FLUXO DE LOGIN NA HORA DA COMPRA */}
             {isLoginOpen && (
                 <div className="modal-overlay active" onClick={(e) => { if (e.target.classList.contains('modal-overlay')) closeModals(); }}>
                     <div className="login-container">
